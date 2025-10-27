@@ -2,9 +2,17 @@ const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./database.sqlite');
 
 const createAccount = (userData, callback) => {
-    const sql = `INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)`;
-    db.run(sql, [userData.username, userData.email, userData.passwordHash], function (err) {
+    // add salt to password ?? here ? controller?
+    const sql = `INSERT INTO users (first_name, last_name, email, password_hash, salt) VALUES (?, ?, ?, ?, ?)`;
+    db.run(sql, [userData.first_name, userData.last_name, userData.email, userData.password_hash, userData.salt], function (err) {
         callback(err, this ? this.lastID : null);
+    });
+};
+
+const doesEmailExist = (email, callback) => {  // should it be here or in a lib file?
+    const sql = 'SELECT user_id FROM users WHERE email = ?';
+    db.get(sql, [email], (err, row) => {
+        callback(err, row ? true : false);
     });
 };
 
@@ -29,6 +37,7 @@ const getProfileInformation = (userId, callback) => {
 
 module.exports = {
     createAccount,
+    doesEmailExist,
     login,
     logout,
     getProfileInformation

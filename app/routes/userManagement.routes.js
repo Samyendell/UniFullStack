@@ -4,8 +4,6 @@ module.exports = function (app) {
 
     //    app.route('/question-management') do i inlcude this ??
 
-    // change {} for :??
-
     app.route('/users')
         .post(userManagement.createAccount);
 

@@ -1,0 +1,103 @@
+const Joi = require("joi");
+const crypto = require("crypto");
+const users = require("../models/user.server.model");
+const { register } = require("module");
+
+
+// add authentication
+const create_account = (req, res) => {
+    const schema = Joi.object({
+        first_name: Joi.string().required(),
+        last_name: Joi.string().required(),
+        email: Joi.string().email().required(),
+        password: Joi.string()
+            .min(8)
+            .max(20)
+            .pattern(new RegExp('(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>])')) // can i use this ? is this what is wanted?
+            .required()
+    });
+
+    const { error } = schema.validate(req.body);
+    if (error) return res.status(400).json({ error_message: error.details[0].message });
+
+    const userData = {
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        email: req.body.email,
+        password: req.body.password,
+    };
+
+    users.addNewUser(userData, (err, userId) => {
+        if (err) {
+            if (err.message === 'Email already exists') { // maybe this should be made less shit
+                return res.status(400).json({ error_message: "Email already exists" });
+            }
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        res.status(201).json({
+            user_id: userId
+        });
+    });
+}
+
+const login = (req, res) => {
+
+    const schema = Joi.object({
+        email: Joi.string().email().required(),
+        password: Joi.string().required()
+    })
+
+    const { error } = schema.validate(req.body);
+    if (error) return res.status(400).json({ error_message: error.details[0].message });
+
+    users.authenticateUser(req.body.email, req.body.password, (err, id) => {
+        if (err === 404) return res.status(400).json({ error_message: "Invalid email/password supplied" });
+        if (err) return res.status(500).json({ error_message: "Server error" });
+
+        users.getToken(id, (err, token) => {
+            if (err) return res.status(500).json({ error_message: "Token generation failed" });
+
+            if (token) {
+                return res.status(200).json({
+                    user_id: id,
+                    session_token: token
+                });
+            } else {
+                users.setToken(id, (err, token) => {
+                    if (err) return res.sendStatus(500);
+                    return res.status(200).json({ user_id: id, session_token: token })
+                })
+            }
+        })
+    })
+}
+
+const logout = (req, res) => {
+    const token = req.get('X-Authorization');
+
+    if (!token) {
+        return res.status(401).json({ error_message: "No token provided" });
+    }
+
+
+
+    users.removeToken(token, (err) => {
+        if (err) {
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        return res.status(200).json({ message: "Logged out successfully" });
+    })
+}
+
+const get_profile_infomation = (req, res) => {
+    return res.sendStatus(500);
+}
+
+module.exports = {
+    create_account: create_account,
+    login: login,
+    logout: logout,
+    get_profile_infomation: get_profile_infomation
+};

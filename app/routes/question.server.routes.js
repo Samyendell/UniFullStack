@@ -1,4 +1,4 @@
-const questionManagement = require('../controllers/questionManagement.controllers')
+const questionManagement = require('../controllers/question.server.controllers')
 
 module.exports = function (app) {
 

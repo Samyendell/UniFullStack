@@ -92,7 +92,78 @@ const logout = (req, res) => {
 }
 
 const get_profile_infomation = (req, res) => {
-    return res.sendStatus(500);
+    const schema = Joi.object({
+        user_id: Joi.number().integer().min(1).required() // Fixed: added min(1)
+    })
+
+    const { error } = schema.validate(req.params);
+    if (error) return res.status(400).json({ error_message: error.details[0].message });
+
+    const userId = parseInt(req.params.user_id);
+
+    users.getProfileInformation(userId, (err, user) => {
+        if (err) {
+            if (err === 404) {
+                return res.status(404).json({ error_message: "User not found" });
+            }
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        users.getUserItems(userId, (err, items) => {
+            if (err) {
+                return res.status(500).json({ error_message: "Database error" });
+            }
+
+            users.getUserActiveBids(userId, (err, activeBids) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                users.getUserEndedAuctions(userId, (err, endedBids) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    const profileData = {
+                        user_id: user.user_id,
+                        first_name: user.first_name,
+                        last_name: user.last_name,
+                        email: user.email,
+                        selling: items || [],
+                        bidding_on: activeBids || [],
+                        auctions_ended: endedBids || []
+                    };
+
+                    console.log(profileData);
+
+                    res.status(200).json(profileData);
+                });
+            });
+        });
+    });
+}
+
+
+const getItem = (req, res) => {
+    const schema = Joi.object({
+        item_id: Joi.number().integer().min(1).required(),
+    })
+
+    const { error } = schema.validate(req.params);
+    if (error) return res.status(400).json({ error_message: error.details[0].message });
+
+    const itemId = parseInt(req.params.item_id);
+
+    core.getItem(itemId, (err, item) => {
+        if (err) {
+            if (err === 404) {
+                return res.status(404).json({ error_message: "Item not found" });
+            }
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        res.status(200).json(item);
+    });
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./database.sqlite');
+const db = new sqlite3.Database('./db.sqlite');
 
 const searchForItem = (searchTerm, callback) => {
     const sql = `SELECT * FROM items WHERE name LIKE ? OR description LIKE ?`;
@@ -9,19 +9,34 @@ const searchForItem = (searchTerm, callback) => {
     });
 };
 
-const createItem = (itemData, callback) => {
-    const sql = `INSERT INTO items (name, description, starting_price) VALUES (?, ?, ?)`;
-    db.run(sql, [itemData.name, itemData.description, itemData.startingPrice], function (err) {
-        callback(err, this ? this.lastID : null);
+const createItem = (itemData, done) => { 
+    const sql = `INSERT INTO items (name, description, starting_bid, start_date, end_date, creator_id) VALUES (?, ?, ?, ?, ?, ?)`;
+    let values = [itemData.name, itemData.description, itemData.starting_bid, itemData.start_date, itemData.end_date, itemData.creator_id];
+    db.run(sql, values, function (err) {
+        if (err) return done(err)
+        return done(false, this.lastID)
     });
 };
 
-const getItem = (itemId, callback) => {
-    const sql = `SELECT * FROM items WHERE id = ?`;
+// need to add name of user to
+const getItem = (itemId, done) => {
+    const sql = `SELECT * FROM items WHERE item_Id=?`;
     db.get(sql, [itemId], (err, row) => {
-        callback(err, row);
+        if (err) return done(err);
+        if (!row) return done(404);
+        return done(false, row);
     });
 };
+
+const getToken = (id, done) => {
+    const sql = 'SELECT session_token FROM users WHERE user_id=?';
+    db.get(sql, [id], (err, row) => {
+        if (err) return done(err);
+        if (!row) return done(404);
+
+        return done(false, row.session_token)
+    })
+}
 
 const bidOnItem = (bidData, callback) => {
     const sql = `INSERT INTO bids (item_id, user_id, bid_amount) VALUES (?, ?, ?)`;

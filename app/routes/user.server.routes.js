@@ -1,4 +1,5 @@
 const users = require('../controllers/user.server.controllers')
+const auth = require('../lib/authentication')
 
 module.exports = function (app) {
     app.route('/users')
@@ -8,9 +9,9 @@ module.exports = function (app) {
         .post(users.login);
 
     app.route('/logout')
-        .post(users.logout);
+        .post(auth.isAuthenticated, users.logout);
 
     app.route('/users/:user_id')
-        .get(users.get_profile_infomation);
+        .get(users.get_profile_infomation); //save for later
 
 };

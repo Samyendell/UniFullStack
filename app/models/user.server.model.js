@@ -10,7 +10,7 @@ const createAccount = (userData, callback) => {
     });
 };
 
-const doesEmailExist = (email, callback) => {  // should it be here or in a lib file?
+const doesEmailExist = (email, callback) => {  // should it be here or in a lib file? //done or callback?
     const sql = 'SELECT user_id FROM users WHERE email = ?';
     db.get(sql, [email], (err, row) => {
         callback(err, row ? true : false);
@@ -88,32 +88,79 @@ const removeToken = (token, done) => {
 
 const getIdFromToken = (token, done) => {
     const sql = 'SELECT user_id FROM users WHERE session_token=?'
-    const params = [token]
 
-    db.get(sql, [token], (err) => {
-        return done(err)
+    db.get(sql, [token], (err, row) => {
+        if (err) return done(err);
+        if (!row) return done(404);
+        
+        return done(false, row.user_id);
     })
-
-    db.get()
-
 }
 
-const login = (username, callback) => {
+const login = (username, done) => { // done or callback??
     const sql = `SELECT * FROM users WHERE username=?`;
     db.get(sql, [username], (err, row) => {
-        callback(err, row);
+        done(err, row);
     });
 };
 
-const logout = (userId, callback) => {
-    // Placeholder: no DB action here typically
-    callback(null);
+const getProfileInformation = (userId, done) => { 
+    const sql = `SELECT user_id, first_name, last_name FROM users WHERE user_id=?`;
+    db.get(sql, [userId], (err, row) => {
+        if (err) return done(err);
+        if (!row) return done(404);
+        return done(false, row);
+    });
 };
 
-const getProfileInformation = (userId, callback) => {
-    const sql = `SELECT id, username, email FROM users WHERE id=?`;
-    db.get(sql, [userId], (err, row) => {
-        callback(err, row);
+const getUserItems = (userId, done) => {
+    const sql = `
+        SELECT i.item_id, i.name, i.description, i.end_date, i.creator_id, u.first_name, u.last_name
+        FROM items i 
+        JOIN users u ON i.creator_id = u.user_id
+        WHERE i.creator_id = ?
+    `;
+    db.all(sql, [userId], (err, rows) => {
+        if (err) return done(err);
+        return done(false, rows);
+    });
+};
+
+const getUserActiveBids = (userId, done) => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    const sql = `
+        SELECT DISTINCT i.*, b.amount as user_bid_amount, u.first_name, u.last_name
+        FROM items i 
+        JOIN bids b ON i.item_id = b.item_id 
+        JOIN users u ON i.creator_id = u.user_id
+        WHERE b.user_id = ? 
+        AND i.end_date > ?
+        ORDER BY i.end_date ASC
+    `;
+    
+    db.all(sql, [userId, currentTime], (err, rows) => {
+        if (err) return done(err);
+        return done(false, rows);
+    });
+};
+
+const getUserEndedAuctions = (userId, done) => {
+    const currentTime = Math.floor(Date.now() / 1000);
+    
+    const sql = `
+        SELECT DISTINCT i.*, b.amount as user_bid_amount, u.first_name, u.last_name
+        FROM items i 
+        JOIN bids b ON i.item_id = b.item_id 
+        JOIN users u ON i.creator_id = u.user_id
+        WHERE b.user_id = ? 
+        AND i.end_date <= ?
+        ORDER BY i.end_date DESC
+    `;
+    
+    db.all(sql, [userId, currentTime], (err, rows) => {
+        if (err) return done(err);
+        return done(false, rows);
     });
 };
 
@@ -127,6 +174,8 @@ module.exports = {
     setToken,
     removeToken,
     getIdFromToken,
-    logout,
-    getProfileInformation
+    getProfileInformation,
+    getUserItems,
+    getUserActiveBids,
+    getUserEndedAuctions
 };

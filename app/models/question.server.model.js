@@ -6,24 +6,27 @@ const getQuestions = (itemId, callback) => {
   db.all(sql, [itemId], (err, rows) => {
     callback(err, rows);
   });
-};
+}
 
-const askQuestion = (questionData, callback) => {
+
+const addQuestion = (questionData, done) => {
   const sql = `INSERT INTO questions (item_id, user_id, question_text) VALUES (?, ?, ?)`;
-  db.run(sql, [questionData.itemId, questionData.userId, questionData.text], function(err) {
-    callback(err, this ? this.lastID : null);
+  const values = [questionData.itemId, questionData.askedBy, questionData.questionText];
+  db.run(sql, [values], function (err) {
+    if (err) return done(err)
+    return done(false);
   });
 };
 
 const answerQuestion = (answerData, callback) => {
   const sql = `UPDATE questions SET answer_text = ? WHERE id = ?`;
-  db.run(sql, [answerData.answer, answerData.questionId], function(err) {
+  db.run(sql, [answerData.answer, answerData.questionId], function (err) {
     callback(err);
   });
 };
 
 module.exports = {
   getQuestions,
-  askQuestion,
+  addQuestion,
   answerQuestion
 };

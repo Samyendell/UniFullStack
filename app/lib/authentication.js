@@ -11,6 +11,9 @@ const isAuthenticated = function (req, res, next) {
     });
 };
 
+//add more stuff here that is used across the different files, e.g is this item owned by the users logged in
+
+
 module.exports = {
     isAuthenticated: isAuthenticated
 };

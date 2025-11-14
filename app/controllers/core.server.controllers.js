@@ -229,7 +229,7 @@ const bidOnItem = (req, res) => {
 
 const getBidHistory = (req, res) => {
     const paramsSchema = Joi.object({
-        item_id: Joi.string().pattern(/^\d+$/).required()
+        item_id: Joi.string().pattern(/^\d+$/).required() // wrong
     });
 
     const { error: paramsError } = paramsSchema.validate(req.params);

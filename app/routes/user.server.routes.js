@@ -12,6 +12,5 @@ module.exports = function (app) {
         .post(auth.isAuthenticated, users.logout);
 
     app.route('/users/:user_id')
-        .get(users.get_profile_infomation); //save for later
-
+        .get(users.get_profile_infomation);
 };

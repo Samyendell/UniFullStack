@@ -38,17 +38,20 @@ const getToken = (id, done) => {
     })
 }
 
-const bidOnItem = (bidData, callback) => {
-    const sql = `INSERT INTO bids (item_id, user_id, bid_amount) VALUES (?, ?, ?)`;
-    db.run(sql, [bidData.itemId, bidData.userId, bidData.bidAmount], function (err) {
-        callback(err, this ? this.lastID : null);
+const bidOnItem = (bidData, done) => {
+    const sql = `INSERT INTO bids (item_id, user_id, amount, timestamp) VALUES (?, ?, ?, ?)`;
+    db.run(sql, [bidData.itemId, bidData.userId, bidData.amount, bidData.timestamp], (err) => {
+        if (err) return done(err);
+        return done(false);
     });
 };
 
-const getBidHistory = (itemId, callback) => {
-    const sql = `SELECT * FROM bids WHERE item_id = ? ORDER BY bid_time DESC`;
+const getBidHistory = (itemId, done) => {
+    const sql = `SELECT * FROM bids WHERE item_id = ? ORDER BY timestamp DESC`;
     db.all(sql, [itemId], (err, rows) => {
-        callback(err, rows);
+        if (err) return done(err);
+
+        return done(false, rows)
     });
 };
 

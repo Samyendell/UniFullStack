@@ -22,7 +22,7 @@ const createItem = (req, res) => {
         name: Joi.string().required(),
         description: Joi.string().required(),
         starting_bid: Joi.number().integer().min(1).required(),
-        end_date: Joi.number().integer().min(Date.now()).required() 
+        end_date: Joi.number().integer().min(Date.now()).required()
     })
 
     const { error } = schema.validate(req.body);
@@ -81,7 +81,7 @@ const createItem = (req, res) => {
 // db error - 500 server error
 const getItem = (req, res) => {
     const schema = Joi.object({
-        item_id: Joi.number().integer().min(1).required(),
+        item_id: Joi.string().pattern(/^\d+$/).required(),
     })
 
     const { error } = schema.validate(req.params);
@@ -97,52 +97,193 @@ const getItem = (req, res) => {
             return res.status(500).json({ error_message: "Database error" });
         }
 
-        // need to add names and bids and if no bids need to add empty object
-        res.status(200).json(item);
+        // Get creator information
+        users.getProfileInformation(item.creator_id, (err, creator) => {
+            if (err) {
+                return res.status(500).json({ error_message: "Database error" });
+            }
+
+            // Get bid history to find current highest bid
+            core.getBidHistory(itemId, (err, bids) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                const itemResponse = {
+                    item_id: item.item_id,
+                    name: item.name,
+                    description: item.description,
+                    starting_bid: item.starting_bid,
+                    start_date: item.start_date,
+                    end_date: item.end_date,
+                    creator_id: item.creator_id,
+                    first_name: creator.first_name,
+                    last_name: creator.last_name
+                };
+
+                // If there are no bids, include starting bid and null bid holder
+                if (!bids || bids.length === 0) {
+                    itemResponse.current_bid = item.starting_bid;
+                    itemResponse.current_bid_holder = null; // Set to null for no bids
+                    return res.status(200).json(itemResponse);
+                }
+
+                // Get the highest bid (first one since they're ordered by timestamp DESC)
+                const highestBid = bids[0];
+                itemResponse.current_bid = highestBid.amount;
+
+                // Get bid holder information
+                users.getProfileInformation(highestBid.user_id, (err, bidHolder) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    itemResponse.current_bid_holder = {
+                        user_id: highestBid.user_id,
+                        first_name: bidHolder.first_name,
+                        last_name: bidHolder.last_name
+                    };
+
+                    return res.status(200).json(itemResponse);
+                });
+            });
+        });
     });
 }
 
 const bidOnItem = (req, res) => {
+    // Validate URL parameters
     const paramsSchema = Joi.object({
-        item_id: Joi.number().integer().min(1).required()
+        item_id: Joi.string().pattern(/^\d+$/).required()
     });
 
+    // Validate request body
     const bodySchema = Joi.object({
         amount: Joi.number().integer().min(1).required()
     });
 
-    const { paramsError } = paramsSchema.validate(req.params);
-    if (paramsError) return res.status(400).json({ error_message: paramsError.details[0].message });
+    const { error: paramsError } = paramsSchema.validate(req.params);
+    if (paramsError) {
+        return res.status(400).json({ error_message: paramsError.details[0].message });
+    }
 
-    const { bodyError } = bodySchema.validate(req.body);
-    if (bodyError) return res.status(400).json({ error_message: bodyError.details[0].message });
+    const { error: bodyError } = bodySchema.validate(req.body);
+    if (bodyError) {
+        return res.status(400).json({ error_message: bodyError.details[0].message });
+    }
 
     const itemId = parseInt(req.params.item_id);
     const amount = req.body.amount;
+    const token = req.get('X-Authorization');
 
-    const bidData = {
-        itemId: itemId,
-        amount: amount 
-    }
-
-    core.bidOnItem(bidData, (err) => {
-        if (err) {
-            if (err === 404) {
-                return res.status(404).json({ error_message: "Item not found" });  // use getItem
-            }
-            if (err === 403) {
-                return res.status(403).json({ error_message: "You cannot bid as the seller on this item" });
-            }
-            return res.status(500).json({ error_message: "Database error" });
+    users.getIdFromToken(token, (err, userId) => {
+        if (err || userId === null) {
+            return res.status(401).json({ error_message: "Unauthorized" });
         }
 
-    return res.sendStatus(201); // message? 
+        core.getItem(itemId, (err, item) => {
+            if (err) {
+                if (err === 404) {
+                    return res.status(404).json({ error_message: "Item not found" });
+                }
+                return res.status(500).json({ error_message: "Database error" });
+            }
+
+            if (userId === item.creator_id) {
+                return res.status(403).json({ error_message: "You cannot bid as the seller on this item" });
+            }
+
+            core.getBidHistory(itemId, (err, items) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                let currentBid = item.starting_bid;
+                
+                if (items && items.length > 0) {
+                    currentBid = items[0].amount;
+                }
+
+                if (amount <= currentBid) {
+                    return res.status(400).json({ error_message: "amount less or equal than current bid" });
+                }
+
+                const bidData = {
+                    itemId: itemId,
+                    userId: userId,
+                    amount: amount,
+                    timestamp: Date.now()
+                };
+
+                core.bidOnItem(bidData, (err) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    return res.sendStatus(201);
+                });
+            });
+        });
     })
 }
 
 const getBidHistory = (req, res) => {
-    return res.sendStatus(500);
-}
+    const paramsSchema = Joi.object({
+        item_id: Joi.string().pattern(/^\d+$/).required()
+    });
+
+    const { error: paramsError } = paramsSchema.validate(req.params);
+    if (paramsError) {
+        return res.status(400).json({ error_message: paramsError.details[0].message });
+    }
+
+    const itemId = req.params.item_id;
+
+    core.getItem(itemId, (err) => {
+        if (err) {
+            if (err === 404) {
+                return res.status(404).json({ error_message: "Item not found" });
+            }
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        core.getBidHistory(itemId, (err, items) => {
+            if (err) {
+                return res.status(500).json({ error_message: "Database error" });
+            }
+
+            if (!items || items.length === 0) {
+                return res.status(200).json([]);
+            }
+
+            let bidHistoryData = new Array(items.length); // Pre-allocate array with correct size
+            let completed = 0;
+
+            items.forEach((bid, index) => {
+                users.getProfileInformation(bid.user_id, (err, user) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    bidHistoryData[index] = { // Use index to preserve order
+                        item_id: parseInt(itemId),
+                        amount: bid.amount,
+                        timestamp: bid.timestamp,
+                        user_id: bid.user_id,
+                        first_name: user.first_name,
+                        last_name: user.last_name
+                    };
+
+                    completed++;
+
+                    if (completed === items.length) {
+                        return res.status(200).json(bidHistoryData);
+                    }
+                });
+            });
+        });
+    });
+};
 
 module.exports = {
     searchForItem: searchForItem,

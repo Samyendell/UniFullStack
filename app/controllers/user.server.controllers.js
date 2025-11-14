@@ -93,7 +93,7 @@ const logout = (req, res) => {
 
 const get_profile_infomation = (req, res) => {
     const schema = Joi.object({
-        user_id: Joi.number().integer().min(1).required() // Fixed: added min(1)
+        user_id: Joi.number().integer().min(1).required()
     })
 
     const { error } = schema.validate(req.params);
@@ -133,8 +133,6 @@ const get_profile_infomation = (req, res) => {
                         bidding_on: activeBids || [],
                         auctions_ended: endedBids || []
                     };
-
-                    console.log(profileData);
 
                     res.status(200).json(profileData);
                 });

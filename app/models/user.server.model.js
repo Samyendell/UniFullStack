@@ -130,12 +130,15 @@ const getUserActiveBids = (userId, done) => {
     const currentTime = Math.floor(Date.now() / 1000);
     
     const sql = `
-        SELECT DISTINCT i.*, b.amount as user_bid_amount, u.first_name, u.last_name
+        SELECT i.item_id, i.name, i.description, i.starting_bid, i.start_date, i.end_date, i.creator_id,
+               u.first_name, u.last_name,
+               MAX(b.amount) as user_bid_amount
         FROM items i 
         JOIN bids b ON i.item_id = b.item_id 
         JOIN users u ON i.creator_id = u.user_id
         WHERE b.user_id = ? 
         AND i.end_date > ?
+        GROUP BY i.item_id, i.name, i.description, i.starting_bid, i.start_date, i.end_date, i.creator_id, u.first_name, u.last_name
         ORDER BY i.end_date ASC
     `;
     

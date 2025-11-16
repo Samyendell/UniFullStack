@@ -30,7 +30,7 @@ const askQuestion = (req, res) => {
 
     const itemId = req.params.item_id;
     const questionText = req.body.question_text;
-    const token = req.get('X-Authorization'); 
+    const token = req.get('X-Authorization');
     // check if its there item
     // check if item exists
     // get 
@@ -72,6 +72,72 @@ const askQuestion = (req, res) => {
 }
 
 const answerQuestion = (req, res) => {
+    const paramsSchema = Joi.object({
+        question_id: Joi.number().min(1).required()
+    });
+
+    const bodySchema = Joi.object({
+        answer_text: Joi.string().required()
+    });
+
+    const { error: paramsError } = paramsSchema.validate(req.params);
+    if (paramsError) {
+        return res.status(400).json({ error_message: paramsError.details[0].message });
+    }
+
+    const { error: bodyError } = bodySchema.validate(req.body);
+    if (bodyError) {
+        return res.status(400).json({ error_message: bodyError.details[0].message });
+    }
+
+    const questionId = req.params.question_id;
+    const answerText = req.body.answer_text;
+    const token = req.get('X-Authorization');
+    // check there is a question to answer
+    // check the user is the seller
+
+    users.getIdFromToken(token, (err, userId) => {
+        if (err || userId === null) {
+            return res.status(401).json({ error_message: "Unauthorized" });
+        }
+
+        question.getItemIdFromQuestion(questionId, (err, itemId) => {
+            if (err) {
+                if (err === 404) {
+                    return res.status(404).json({ error_message: "Question not found" });
+                }
+                return res.status(500).json({ error_message: "Database error" });
+            }
+
+            core.getItem(itemId, (err, item) => {
+                if (err) {
+                    if (err === 404) {
+                        return res.status(404).json({ error_message: "Item not found" });
+                    }
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                if (!userId === item.creator_id) {
+                    return res.status(403).json({ error_message: "You cannot bid as the seller on this item" });
+                }
+
+                const answerData = {
+                    questionId: questionId,
+                    answerText: answerText,
+                }
+
+                question.addAnswer(answerData, (err) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    return res.sendStatus(200);
+
+                })
+
+            })
+        })
+    })
     return res.sendStatus(500);
 }
 

@@ -8,6 +8,25 @@ const getQuestions = (itemId, callback) => {
   });
 }
 
+const getItemIdFromQuestion = (questionId, done) => {
+  const sql = 'SELECT item_id FROM questions WHERE question_id=?';
+
+  db.get(sql, [questionId], (err, row) => {
+    if (err) return done(err)
+    if (!row) return done(404)
+
+    return done(false, row.item_id)
+  })
+}
+
+const addAnswer = (answerData, done) => {
+  const sql = 'UPDATE questions SET answer=? WHERE question_id=?';
+  const values = [answerData.answerText, answerData.questionId]
+  db.run(sql, [values], (err) => {
+    if (err) return done(err)
+    return done(false)
+  })
+}
 
 const addQuestion = (questionData, done) => {
   const sql = `INSERT INTO questions (item_id, user_id, question_text) VALUES (?, ?, ?)`;
@@ -27,6 +46,8 @@ const answerQuestion = (answerData, callback) => {
 
 module.exports = {
   getQuestions,
+  getItemIdFromQuestion,
   addQuestion,
+  addAnswer,
   answerQuestion
 };

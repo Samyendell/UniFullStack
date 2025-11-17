@@ -256,7 +256,7 @@ const getBidHistory = (req, res) => {
                 return res.status(200).json([]);
             }
 
-            let bidHistoryData = new Array(items.length); // Pre-allocate array with correct size
+            let bidHistoryData = new Array(items.length);
             let completed = 0;
 
             items.forEach((bid, index) => {
@@ -265,7 +265,7 @@ const getBidHistory = (req, res) => {
                         return res.status(500).json({ error_message: "Database error" });
                     }
 
-                    bidHistoryData[index] = { // Use index to preserve order
+                    bidHistoryData[index] = {
                         item_id: parseInt(itemId),
                         amount: bid.amount,
                         timestamp: bid.timestamp,

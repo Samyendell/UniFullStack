@@ -3,11 +3,53 @@ const question = require('../models/question.server.model')
 const core = require('../models/core.server.model');
 const users = require('../models/user.server.model')
 
-const getQuestions = (req, res) => {
-    return res.sendStatus(500);
-}
 
-// got ask question in place not all tests passing but some are, maybe should get answer question done as well
+//got all of the methods in now, need to work through the question tests to get them working
+
+const getQuestions = (req, res) => {
+    const paramsSchema = Joi.object({
+        item_id: Joi.number().min(1).required()
+    });
+
+    const { error: paramsError } = paramsSchema.validate(req.params);
+    if (paramsError) {
+        return res.status(400).json({ error_message: paramsError.details[0].message });
+    }
+
+    const itemId = req.params.item_id;
+
+    question.getQuestions(itemId, (err, questions) => {
+        if (err) {
+            if (err === 404) {
+                return res.status(404).json({ error_message: "Question not found" });
+            }
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+
+        if (!questions || questions.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        let questionData = new Array(questions.length);
+        let completed = 0;
+
+        questions.forEach((question, index) => {
+
+            questionData[index] = {
+                question_id: question.question_id,
+                question_text: question.question,
+                answer_test: question.answer
+            };
+
+            completed++;
+
+            if (completed === questions.length) {
+                return res.status(200).json(questionData);
+            }
+        })
+    })
+}
 
 const askQuestion = (req, res) => {
     const paramsSchema = Joi.object({
@@ -31,9 +73,6 @@ const askQuestion = (req, res) => {
     const itemId = req.params.item_id;
     const questionText = req.body.question_text;
     const token = req.get('X-Authorization');
-    // check if its there item
-    // check if item exists
-    // get 
 
     users.getIdFromToken(token, (err, userId) => {
         if (err || userId === null) {
@@ -93,8 +132,6 @@ const answerQuestion = (req, res) => {
     const questionId = req.params.question_id;
     const answerText = req.body.answer_text;
     const token = req.get('X-Authorization');
-    // check there is a question to answer
-    // check the user is the seller
 
     users.getIdFromToken(token, (err, userId) => {
         if (err || userId === null) {
@@ -117,8 +154,8 @@ const answerQuestion = (req, res) => {
                     return res.status(500).json({ error_message: "Database error" });
                 }
 
-                if (!userId === item.creator_id) {
-                    return res.status(403).json({ error_message: "You cannot bid as the seller on this item" });
+                if (userId !== item.creator_id) {
+                    return res.status(403).json({ error_message: "Only the seller can answer questions on their items" });
                 }
 
                 const answerData = {
@@ -138,7 +175,6 @@ const answerQuestion = (req, res) => {
             })
         })
     })
-    return res.sendStatus(500);
 }
 
 module.exports = {

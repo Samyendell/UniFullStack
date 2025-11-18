@@ -2,11 +2,10 @@ const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./db.sqlite');
 
 const getQuestions = (itemId, done) => {
-  const sql = `SELECT (question_id, question, answer) FROM questions WHERE item_id = ?`;
+  const sql = `SELECT question_id, question, answer FROM questions WHERE item_id=? ORDER BY question_id DESC`;
   
   db.all(sql, [itemId], (err, rows) => {
     if (err) return done(err);
-    if (!rows) return done(404);
     done(false, rows);
   });
 }
@@ -31,7 +30,7 @@ const addAnswer = (answerData, done) => {
 }
 
 const addQuestion = (questionData, done) => {
-  const sql = `INSERT INTO questions (item_id, user_id, question) VALUES (?, ?, ?)`;
+  const sql = `INSERT INTO questions (item_id, asked_by, question) VALUES (?, ?, ?)`;
   const values = [questionData.itemId, questionData.askedBy, questionData.questionText];
   db.run(sql, values, function (err) {
     if (err) return done(err);

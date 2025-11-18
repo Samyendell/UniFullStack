@@ -3,9 +3,6 @@ const question = require('../models/question.server.model')
 const core = require('../models/core.server.model');
 const users = require('../models/user.server.model')
 
-
-//got all of the methods in now, need to work through the question tests to get them working
-
 const getQuestions = (req, res) => {
     const paramsSchema = Joi.object({
         item_id: Joi.number().min(1).required()
@@ -18,35 +15,30 @@ const getQuestions = (req, res) => {
 
     const itemId = req.params.item_id;
 
-    question.getQuestions(itemId, (err, questions) => {
+    core.getItem(itemId, (err) => { // might need to add item back
         if (err) {
             if (err === 404) {
-                return res.status(404).json({ error_message: "Question not found" });
+                return res.status(404).json({ error_message: "Item not found" });
             }
             return res.status(500).json({ error_message: "Database error" });
         }
 
+        question.getQuestions(itemId, (err, questions) => {
+            if (err) {
+                return res.status(500).json({ error_message: "Database error" });
+            }
 
-        if (!questions || questions.length === 0) {
-            return res.status(200).json([]);
-        }
+            if (!questions || questions.length === 0) {
+                return res.status(200).json([]);
+            }
 
-        let questionData = new Array(questions.length);
-        let completed = 0;
-
-        questions.forEach((question, index) => {
-
-            questionData[index] = {
+            const questionData = questions.map(question => ({
                 question_id: question.question_id,
                 question_text: question.question,
-                answer_test: question.answer
-            };
+                answer_text: question.answer
+            }));
 
-            completed++;
-
-            if (completed === questions.length) {
-                return res.status(200).json(questionData);
-            }
+            return res.status(200).json(questionData);
         })
     })
 }

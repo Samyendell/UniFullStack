@@ -3,20 +3,131 @@ const core = require('../models/core.server.model');
 const users = require('../models/user.server.model')
 
 const searchForItem = (req, res) => {
-    return res.sendStatus(500);
-}
+    const schema = Joi.object({
+        q: Joi.string().allow('').optional(),
+        status: Joi.string().valid('BID', 'OPEN', 'ARCHIVE').optional(),
+        limit: Joi.number().min(1).max(100).default(20),
+        offset: Joi.number().min(0).default(0)
+    });
 
+    const { error } = schema.validate(req.query);
+    if (error) return res.status(400).json({ error_message: error.details[0].message });
 
-// validate {
-//   "name": "Henry Hoover",
-//   "description": "Barely used henry hoover - freshly emptied",
-//   "starting_bid": 99,
-//   "end_date": 89983256
-// }
+    const { q, status, limit = 20, offset = 0 } = req.query;
+    const token = req.get('X-Authorization');
 
-// check end date is in future
+    // If status filter is used, we need authentication
+    if (status && ['BID', 'OPEN', 'ARCHIVE'].includes(status)) {
+        // Check if token exists first
+        if (!token) {
+            return res.status(400).json({ error_message: "Authentication required for status filter" });
+        }
 
-// if good send req to model to add item and return 
+        users.getIdFromToken(token, (err, userId) => {
+            if (err || userId === null) {
+                return res.status(401).json({ error_message: "Unauthorized" });
+            }
+
+            searchWithStatus(q, status, userId, parseInt(limit), parseInt(offset), res);
+        });
+    } else {
+        // Simple search by name/description only
+        searchBasic(q, parseInt(limit), parseInt(offset), res);
+    }
+};
+
+const searchBasic = (searchTerm, limit, offset, res) => {
+    core.searchForItem(searchTerm, (err, items) => {
+        if (err) {
+            return res.status(500).json({ error_message: "Database error" });
+        }
+
+        // Apply pagination
+        const paginatedItems = items.slice(offset, offset + limit);
+        
+        res.status(200).json(paginatedItems);
+    });
+};
+
+const searchWithStatus = (searchTerm, status, userId, limit, offset, res) => {
+    const currentTime = Date.now();
+
+    switch (status) {
+        case 'BID':
+            users.getUserActiveBids(userId, (err, activeBids) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                users.getUserEndedAuctions(userId, (err, endedBids) => {
+                    if (err) {
+                        return res.status(500).json({ error_message: "Database error" });
+                    }
+
+                    let allBids = [...activeBids, ...endedBids];
+                    
+                    if (searchTerm) {
+                        allBids = allBids.filter(item => 
+                            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.description.toLowerCase().includes(searchTerm.toLowerCase())
+                        );
+                    }
+
+                    const paginatedItems = allBids.slice(offset, offset + parseInt(limit));
+                    res.status(200).json(paginatedItems);
+                });
+            });
+            break;
+
+        case 'OPEN':
+            // Items created by user that are still active
+            users.getUserItems(userId, (err, userItems) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                let openItems = userItems.filter(item => item.end_date > currentTime);
+
+                // Filter by search term if provided
+                if (searchTerm) {
+                    openItems = openItems.filter(item => 
+                        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                }
+
+                // Apply pagination
+                const paginatedItems = openItems.slice(offset, offset + parseInt(limit));
+                res.status(200).json(paginatedItems);
+            });
+            break;
+
+        case 'ARCHIVE':
+            // Items created by user where bidding has closed
+            users.getUserItems(userId, (err, userItems) => {
+                if (err) {
+                    return res.status(500).json({ error_message: "Database error" });
+                }
+
+                let archivedItems = userItems.filter(item => item.end_date <= currentTime);
+
+                if (searchTerm) {
+                    archivedItems = archivedItems.filter(item => 
+                        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                }
+
+                const paginatedItems = archivedItems.slice(offset, offset + parseInt(limit));
+                res.status(200).json(paginatedItems);
+            });
+            break;
+
+        default:
+            return res.status(400).json({ error_message: "Invalid status parameter" });
+    }
+};
+
 const createItem = (req, res) => {
     const schema = Joi.object({
         name: Joi.string().required(),
@@ -28,7 +139,6 @@ const createItem = (req, res) => {
     const { error } = schema.validate(req.body);
     if (error) return res.status(400).json({ error_message: error.details[0].message });
 
-    // Get user ID from authentication middleware
     const token = req.get('X-Authorization');
     users.getIdFromToken(token, (err, userId) => {
         if (err || userId === null) {

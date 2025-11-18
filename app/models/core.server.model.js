@@ -2,11 +2,30 @@ const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./db.sqlite');
 
 const searchForItem = (searchTerm, callback) => {
-    const sql = `SELECT * FROM items WHERE name LIKE ? OR description LIKE ?`;
-    const param = `%${searchTerm}%`;
-    db.all(sql, [param, param], (err, rows) => {
-        callback(err, rows);
-    });
+    if (!searchTerm || searchTerm === '') {
+        // Return all items with creator information if no search term provided
+        const sql = `
+            SELECT i.*, u.first_name, u.last_name 
+            FROM items i 
+            JOIN users u ON i.creator_id = u.user_id 
+            ORDER BY i.start_date DESC
+        `;
+        db.all(sql, [], (err, rows) => {
+            callback(err, rows); // change to done
+        });
+    } else {
+        const sql = `
+            SELECT i.*, u.first_name, u.last_name 
+            FROM items i 
+            JOIN users u ON i.creator_id = u.user_id 
+            WHERE i.name LIKE ? OR i.description LIKE ? 
+            ORDER BY i.start_date DESC
+        `;
+        const param = `%${searchTerm}%`;
+        db.all(sql, [param, param], (err, rows) => {
+            callback(err, rows); // change to done
+        });
+    }
 };
 
 const createItem = (itemData, done) => { 

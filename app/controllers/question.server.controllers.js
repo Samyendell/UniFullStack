@@ -1,7 +1,8 @@
 const Joi = require("joi")
 const question = require('../models/question.server.model')
 const core = require('../models/core.server.model');
-const users = require('../models/user.server.model')
+const users = require('../models/user.server.model');
+const profanityFilter = require('../utils/profanityFilter');
 
 const getQuestions = (req, res) => {
     const paramsSchema = Joi.object({
@@ -62,6 +63,12 @@ const askQuestion = (req, res) => {
         return res.status(400).json({ error_message: bodyError.details[0].message });
     }
 
+    if (profanityFilter.isProfane(req.body.question_text)) {
+        return res.status(400).json({ 
+            error_message: "Question contains inappropriate language and cannot be created" 
+        });
+    }
+
     const itemId = req.params.item_id;
     const questionText = req.body.question_text;
     const token = req.get('X-Authorization');
@@ -119,6 +126,12 @@ const answerQuestion = (req, res) => {
     const { error: bodyError } = bodySchema.validate(req.body);
     if (bodyError) {
         return res.status(400).json({ error_message: bodyError.details[0].message });
+    }
+
+    if (profanityFilter.isProfane(req.body.answer_text)) {
+        return res.status(400).json({ 
+            error_message: "Answer contains inappropriate language and cannot be created" 
+        });
     }
 
     const questionId = req.params.question_id;

@@ -1,6 +1,7 @@
 const Joi = require("joi");
 const core = require('../models/core.server.model');
-const users = require('../models/user.server.model')
+const users = require('../models/user.server.model');
+const profanityFilter = require('../utils/profanityFilter');
 
 const searchForItem = (req, res) => {
     const schema = Joi.object({
@@ -139,6 +140,12 @@ const createItem = (req, res) => {
     const { error } = schema.validate(req.body);
     if (error) return res.status(400).json({ error_message: error.details[0].message });
 
+    if (profanityFilter.isProfane(req.body.name) || profanityFilter.isProfane(req.body.description)) {
+        return res.status(400).json({ 
+            error_message: "Item contains inappropriate language and cannot be created" 
+        });
+    }
+    
     const token = req.get('X-Authorization');
     users.getIdFromToken(token, (err, userId) => {
         if (err || userId === null) {

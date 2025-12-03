@@ -1,7 +1,7 @@
 const Joi = require("joi");
 const core = require('../models/core.server.model');
 const users = require('../models/user.server.model');
-const profanityFilter = require('../utils/profanityFilter');
+const profanityFilter = require('../lib/profanityFilter');
 
 const searchForItem = (req, res) => {
     const schema = Joi.object({

@@ -2,7 +2,7 @@ const Joi = require("joi")
 const question = require('../models/question.server.model')
 const core = require('../models/core.server.model');
 const users = require('../models/user.server.model');
-const profanityFilter = require('../utils/profanityFilter');
+const profanityFilter = require('../lib/profanityFilter');
 
 const getQuestions = (req, res) => {
     const paramsSchema = Joi.object({

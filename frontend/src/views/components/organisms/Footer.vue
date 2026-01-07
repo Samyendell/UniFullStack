@@ -1,91 +1,79 @@
 <template>
-    <footer class="footer">
-      <div class="footer-content">
-        <div class="footer-section">
-          <Logo size="small" />
-          <p class="footer-description">
-            Your premier destination for luxury watch auctions and collections.
-          </p>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Quick Links</h4>
+  <footer class="gradient-backgroud py-5">
+    <div class="container">
+      <div class="row g-4">
+        <div class="col-lg-4 col-md-6">
+          <h3 class="brand-logo mb-3">TickTokTwo</h3>
+          <p class="text-white-50">
+              Possibly the best website to buy watches in the world, just ask our 1 BILLION members
+            </p>
+          </div>
+
+        <div class="col-lg-2 col-md-6">
+          <h5 class="text-white mb-3">Quick Links</h5>
           <ul class="footer-links">
             <li><router-link to="/">Home</router-link></li>
-            <li><router-link to="/items">Browse Items</router-link></li>
-            <li><router-link to="/create-item" v-if="isLoggedIn">Add Item</router-link></li>
+            <li><router-link to="/items">Browse Watches</router-link></li>
+            <li v-if="isLoggedIn"><router-link to="/create-item">List Watch</router-link></li>
           </ul>
         </div>
-        
-        <div class="footer-section">
-          <h4>Account</h4>
+
+        <div class="col-lg-2 col-md-6">
+          <h5 class="text-white mb-3">Account</h5>
           <ul class="footer-links">
             <li v-if="!isLoggedIn"><router-link to="/login">Login</router-link></li>
             <li v-if="isLoggedIn"><router-link to="/profile">Profile</router-link></li>
             <li v-if="isLoggedIn"><router-link to="/logout">Logout</router-link></li>
           </ul>
         </div>
-        
-        <div class="footer-section">
-          <h4>Contact</h4>
-          <p>Email: support@timekeeper.com</p>
-          <p>Phone: (555) 123-4567</p>
+
+        <div class="col-lg-4 col-md-6">
+            <h5 class="text-white mb-3">Get In Touch</h5>
+            <p class="text-white-50 mb-2">
+              <strong>Email:</strong> support@<span class="brand-logo">TickTokTwo</span>.com
+            </p>
+            <p class="text-white-50 mb-2">
+              <strong>Phone:</strong> 07462 461487
+            </p>
+            <p class="text-white-50">
+              <strong>Hours:</strong> Mon-Sun 4AM-11PM
+            </p>
+          </div>
+      </div>
+
+      <hr class="border-secondary my-4">
+      <div class="row">
+        <div class="col-12 text-center">
+          <p class="text-white-50 mb-0">
+            &copy; 2026 <span class="brand-logo">TickTokTwo</span> Auctions. All rights reserved.
+          </p>
         </div>
       </div>
-      
-      <div class="footer-bottom">
-        <p>&copy; 2024 TimeKeeper Auctions. All rights reserved.</p>
-      </div>
-    </footer>
-  </template>
-  
-  <script>
-  import Logo from '../atoms/Logo.vue'
-  
-  export default {
-    name: 'Footer',
-    components: {
-      Logo
-    },
-    computed: {
-      isLoggedIn() {
-        return !!localStorage.getItem('session_token')
-      }
+    </div>
+  </footer>
+</template>
+
+<script>
+export default {
+  name: 'Footer',
+  computed: {
+    isLoggedIn() {
+      return !!localStorage.getItem('session_token')
     }
   }
-  </script>
-  
-  <style scoped>
-  .footer {
-    background: #2c3e50;
-    color: white;
+}
+</script>
+
+<style scoped>
+  .gradient-backgroud {
     margin-top: auto;
-  }
-  
-  .footer-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 3rem 2rem 2rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-  }
-  
-  .footer-section h4 {
-    color: #f4d03f;
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-  }
-  
-  .footer-description {
-    color: #bdc3c7;
-    line-height: 1.6;
-    margin-top: 1rem;
+    border-top: 3px solid #000;
   }
   
   .footer-links {
     list-style: none;
     padding: 0;
+    margin: 0;
   }
   
   .footer-links li {
@@ -93,27 +81,22 @@
   }
   
   .footer-links a {
-    color: #bdc3c7;
+    color: #c3c7ca;
     text-decoration: none;
-    transition: color 0.3s ease;
   }
   
   .footer-links a:hover {
-    color: #f4d03f;
-  }
-  
-  .footer-bottom {
-    border-top: 1px solid #34495e;
-    text-align: center;
-    padding: 1.5rem 2rem;
-    color: #95a5a6;
+    color: #d4af37;
+    text-decoration: underline;
   }
   
   @media (max-width: 768px) {
-    .footer-content {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-      padding: 2rem 1rem 1rem;
+    h5 {
+      margin-top: 1.5rem;
+    }
+  
+    h3.brand-logo {
+      margin-top: 0;
     }
   }
   </style>

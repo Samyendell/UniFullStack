@@ -27,7 +27,7 @@
         } finally {
           // Clear local storage
           localStorage.removeItem('session_token')
-          localStorage.removeItem('user_data')
+          localStorage.removeItem('user_id')
           
           // Redirect to login page
           setTimeout(() => {

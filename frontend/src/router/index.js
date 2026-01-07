@@ -64,6 +64,8 @@ import ItemsView from '../views/pages/ItemsView.vue'
 import SingleItem from '../views/pages/SingleItem.vue'
 import Profile from '../views/pages/Profile.vue'
 import Logout from '../views/pages/Logout.vue'
+import Register from '../views/pages/Register.vue'
+
 
 const ifAuthenticated = (to, from, next) => {
   const loggedIn = localStorage.getItem('session_token')
@@ -94,6 +96,11 @@ const routes = [
     name: 'Login', 
     component: Login,
     beforeEnter: ifNotAuthenticated
+  },
+  { 
+    path: '/register', 
+    name: 'Register', 
+    component: Register,
   },
   { 
     path: '/create-item', 

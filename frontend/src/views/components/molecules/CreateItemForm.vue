@@ -1,8 +1,8 @@
 <template>
   <div>
-    <h2>List Your Watch</h2>
-    
     <form @submit.prevent="handleSubmit" class="form-content">
+      <h2>List Your Watch</h2>
+      
       <Input
         v-model="formData.name"
         label="Item Name"
@@ -24,7 +24,7 @@
         v-model="formData.starting_bid"
         type="number"
         label="Starting Bid"
-        placeholder="0.00"
+        placeholder="0"
         min="0"
         :error="submitted && !formData.starting_bid ? 'Starting bid is required' : ''"
       />
@@ -35,7 +35,9 @@
           v-model="formData.end_date"
           type="datetime-local"
           class="form-input"
+          :class="{ error: submitted && !formData.end_date }"
         />
+        <div v-if="submitted && !formData.end_date" class="error-text">End date is required</div>
       </div>
 
       <div v-if="error" class="form-error">{{ error }}</div>
@@ -66,7 +68,7 @@ export default {
     loading: Boolean,
     error: String
   },
-  emits: ['submit', 'cancel'],
+  emits: ['submit'],
   data() {
     return {
       submitted: false,
@@ -86,85 +88,44 @@ export default {
         return
       }
 
-      const endDateTimestamp = new Date(this.formData.end_date).getTime() / 1000
+      const endDateTimestamp = new Date(this.formData.end_date).getTime()
 
-      const apiData = {
+      const itemData = {
         name: this.formData.name,
         description: this.formData.description,
         starting_bid: parseFloat(this.formData.starting_bid),
-        end_date: Math.floor(endDateTimestamp)
+        end_date: endDateTimestamp
       }
 
-      this.$emit('submit', apiData)
+      this.$emit('submit', itemData)
     }
   }
 }
 </script>
 
 <style scoped>
-h2 {
-  color: #2c3e50;
-  margin-bottom: 30px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.form-content {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  max-width: 100%;
-  width: 100%;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #000000;
-  border-radius: 14px;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #d4af37;
-}
-
-/* Bigger description textarea */
-.description-input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #000000;
-  border-radius: 14px;
-  font-family: inherit;
-  resize: vertical;
-  min-height: 100px;
-}
-
-.description-input:focus {
-  outline: none;
-  border-color: #d4af37;
-}
-
-.form-error {
-  color: #ff0000;
-  padding: 10px;
-  border-radius: 8px;
-  border: 2px solid #ff0000;
-  text-align: center;
-}
-
-.form-submit {
-  margin-top: 14px;
-}
-</style>
+  .description-input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #000000;
+    border-radius: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+  }
+  
+  .description-input:focus {
+    outline: none;
+    border-color: #d4af37;
+  }
+  
+  .error-text {
+    color: #ff0000;
+    font-size: 14px;
+    margin-top: 6px;
+  }
+  
+  .form-input.error {
+    border-color: #ff0000;
+  }
+  </style>

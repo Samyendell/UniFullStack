@@ -1,11 +1,48 @@
-const searchItems = (query = '', filters = {}) => {
-    const params = new URLSearchParams({
-        ...(query && { q: query }),
-        ...filters
-    })
-    const url = params.toString() ? `http://localhost:3333/search?${params}` : "http://localhost:3333/search"
+const searchItems = (params = {}) => {
+    const searchParams = new URLSearchParams()
+    
+    // Add query parameter if provided
+    if (params.q) {
+        searchParams.append('q', params.q)
+    }
+    
+    // Add status filter if provided
+    if (params.status) {
+        searchParams.append('status', params.status)
+    }
+    
+    // Add pagination if provided
+    if (params.limit) {
+        searchParams.append('limit', params.limit)
+    }
+    
+    if (params.offset) {
+        searchParams.append('offset', params.offset)
+    }
+    
+    const url = searchParams.toString() 
+        ? `http://localhost:3333/search?${searchParams.toString()}`
+        : "http://localhost:3333/search"
     
     return fetch(url)
+    .then((response) => {
+        if(response.status === 200){
+            return response.json()
+        } else {
+            throw 'something went wrong'
+        }
+    })
+    .then((resJson) => {
+        return resJson
+    })
+    .catch((err) => {
+        console.log("Err", err)
+        return Promise.reject(err)
+    })
+}
+
+const getAllItems = () => {
+    return fetch("http://localhost:3333/search")
     .then((response) => {
         if(response.status === 200){
             return response.json()
@@ -47,7 +84,7 @@ const createItem = (itemData) => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
+            ...(token && { 'X-Authorization': token })
         },
         body: JSON.stringify(itemData)
     })
@@ -114,6 +151,7 @@ const getBidHistory = (itemId) => {
 
 export const coreService = { 
     searchItems, 
+    getAllItems,
     getSingleItem, 
     createItem, 
     placeBid, 

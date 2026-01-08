@@ -11,7 +11,6 @@
           :loading="loading"
           :error="error"
           @submit="handleCreateItem"
-          @cancel="goBack"
         />
       </div>
     </div>
@@ -46,9 +45,6 @@ export default {
       } finally {
         this.loading = false
       }
-    },
-    goBack() {
-      this.$router.push('/items')
     }
   }
 }

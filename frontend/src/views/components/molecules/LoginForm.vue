@@ -65,33 +65,4 @@ export default {
 }
 </script>
 
-<style scoped>
-  h2 {
-    color: #2c3e50;
-    margin-bottom: 30px;
-    font-weight: 600;
-    text-align: center;
-  }
-  
-  .form-content {
-    display: flex;
-    flex-direction: column;
-    gap: 25px;
-    max-width: 400px;
-    width: 100%;
-  }
-  
-  .form-submit {
-    margin-top: 14px;
-  }
-  
-  .form-error {
-    color: #ff0000;
-    padding: 10px;
-    border-radius: 8px;
-    border: 2px solid #ff0000;
-    text-align: center;
-    width: 100%;
-    max-width: 400px;
-  }
-  </style>
+<!-- No styles - all moved to main.css -->

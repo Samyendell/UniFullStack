@@ -14,7 +14,7 @@
             <router-link v-if="isLoggedIn" to="/item">
               <Button text="List Your Watch" />
             </router-link>
-            <router-link v-else to="/login">
+            <router-link v-else to="/register">
               <Button text="Join Today" />
             </router-link>
           </div>
@@ -68,7 +68,7 @@
             : 'Join the billion watch collectors currently using ' }}<span v-if="!isLoggedIn"
             class="brand-logo">TickTokTwo</span>
         </p>
-        <router-link :to="isLoggedIn ? '/item' : '/login'">
+        <router-link :to="isLoggedIn ? '/item' : '/register'">
           <Button :text="ctaButtonText" />
         </router-link>
       </div>
@@ -77,7 +77,6 @@
 </template>
 
 <script>
-
 import Button from '../components/atoms/Button.vue'
 
 export default {
@@ -130,17 +129,5 @@ export default {
   min-height: 60vh;
   display: flex;
   align-items: center;
-}
-
-.custom-card {
-  border: 2px solid transparent !important;
-  border-radius: 14px !important;
-  transition: all 0.3s ease;
-}
-
-.custom-card:hover {
-  transform: translateY(-4px);
-  border-color: #2c3e50 !important;
-  box-shadow: 0 12px 32px rgba(26, 37, 47, 0.15) !important;
 }
 </style>

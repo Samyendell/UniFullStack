@@ -5,7 +5,7 @@
       <p class="item-description">{{ item.description }}</p>
       
       <div class="item-footer">
-        <span class="item-price">${{ item.starting_bid }}</span>
+        <span class="item-price">£ {{ item.starting_bid }}</span>
         <span class="item-status" :class="getStatusClass()">
           {{ getStatusText() }}
         </span>

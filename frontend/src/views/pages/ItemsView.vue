@@ -2,7 +2,7 @@
   <div class="items-page">
     <div class="items-container">
       <h1 class="page-title">Browse Items</h1>
-      
+
       <div class="search-section">
         <SearchBar @search="handleSearch" />
       </div>
@@ -34,25 +34,21 @@
       </div>
 
       <div v-else class="items-grid">
-        <ItemCard v-for="item in items" :key="item.id" :item="item" @click="viewItem(item.id)" />
-      </div>
+    <ItemCard 
+      v-for="item in items" 
+      :key="item.id || item.item_id || item._id" 
+      :item="item"
+      @click="viewItem(item.item_id)" 
+    />
+  </div>
 
       <div v-if="items.length > 0" class="pagination-controls">
-        <Button 
-          text="Previous"
-          @click="previousPage"
-          :class="{ 'invisible': currentOffset === 0 }"
-          class="pagination-btn"
-        />
+        <Button text="Previous" @click="previousPage" :class="{ 'invisible': currentOffset === 0 }"
+          class="pagination-btn" />
         <span class="pagination-info">
           Page {{ currentPage }}
         </span>
-        <Button 
-          text="Next"
-          @click="nextPage"
-          :class="{ 'invisible': !hasMoreItems }"
-          class="pagination-btn"
-        />
+        <Button text="Next" @click="nextPage" :class="{ 'invisible': !hasMoreItems }" class="pagination-btn" />
       </div>
 
       <div class="items-actions">
@@ -122,6 +118,11 @@ export default {
         const response = await coreService.searchItems(params)
         const allItems = Array.isArray(response) ? response : []
 
+        if (allItems.length > 0) {
+          console.log('First item structure:', allItems[0])
+          console.log('Available properties:', Object.keys(allItems[0]))
+        }
+
         this.hasMoreItems = allItems.length > this.limit
         this.items = this.hasMoreItems ? allItems.slice(0, this.limit) : allItems
 
@@ -138,25 +139,25 @@ export default {
     },
 
     getNoItemsMessage() {
-    if (this.searchQuery.trim()) {
-      return `No items found for "${this.searchQuery}"`
-    }
-    
-    if (this.selectedFilter) {
-      return `No ${this.getSimpleFilterLabel()} found`
-    }
-    
-    return 'No items available'
-  },
+      if (this.searchQuery.trim()) {
+        return `No items found for "${this.searchQuery}"`
+      }
 
-  getSimpleFilterLabel() {
-    switch (this.selectedFilter) {
-      case 'BID': return 'items you\'ve bid on'
-      case 'OPEN': return 'active items'
-      case 'ARCHIVE': return 'closed items'
-      default: return 'items'
-    }
-  },
+      if (this.selectedFilter) {
+        return `No ${this.getSimpleFilterLabel()} found`
+      }
+
+      return 'No items available'
+    },
+
+    getSimpleFilterLabel() {
+      switch (this.selectedFilter) {
+        case 'BID': return 'items you\'ve bid on'
+        case 'OPEN': return 'active items'
+        case 'ARCHIVE': return 'closed items'
+        default: return 'items'
+      }
+    },
 
     createItem() {
       this.$router.push('/create-item')
@@ -179,23 +180,33 @@ export default {
       switch (this.sortBy) {
         case 'newest':
           items.sort((a, b) => {
-            const aTime = a.end_date || a.created_at || 0
-            const bTime = b.end_date || b.created_at || 0
-            return bTime - aTime
+            // Convert to Date objects for proper comparison using start_date
+            const aTime = new Date(a.start_date || 0).getTime()
+            const bTime = new Date(b.start_date || 0).getTime()
+            return bTime - aTime // Newest first (most recent start dates first)
           })
           break
         case 'oldest':
           items.sort((a, b) => {
-            const aTime = a.end_date || a.created_at || 0
-            const bTime = b.end_date || b.created_at || 0
-            return aTime - bTime
+            // Convert to Date objects for proper comparison using start_date
+            const aTime = new Date(a.start_date || 0).getTime()
+            const bTime = new Date(b.start_date || 0).getTime()
+            return aTime - bTime // Oldest first (earliest start dates first)
           })
           break
         case 'price-low':
-          items.sort((a, b) => (a.starting_bid || 0) - (b.starting_bid || 0))
+          items.sort((a, b) => {
+            const aPrice = parseFloat(a.starting_bid || a.current_bid || 0)
+            const bPrice = parseFloat(b.starting_bid || b.current_bid || 0)
+            return aPrice - bPrice // Low to high
+          })
           break
         case 'price-high':
-          items.sort((a, b) => (b.starting_bid || 0) - (a.starting_bid || 0))
+          items.sort((a, b) => {
+            const aPrice = parseFloat(a.starting_bid || a.current_bid || 0)
+            const bPrice = parseFloat(b.starting_bid || b.current_bid || 0)
+            return bPrice - aPrice // High to low
+          })
           break
       }
 
@@ -213,11 +224,38 @@ export default {
     },
 
     viewItem(id) {
+      console.log('Navigating to item ID:', id)
       this.$router.push(`/items/${id}`)
     }
   }
 }
 </script>
+
+<style scoped>
+.search-section {
+  max-width: 500px;
+  margin: 0 auto 2rem;
+}
+
+.items-actions {
+  text-align: center;
+  max-width: 300px;
+  margin: 0 auto;
+}
+</style>
+  
+  <style scoped>
+  .search-section {
+    max-width: 500px;
+    margin: 0 auto 2rem;
+  }
+  
+  .items-actions {
+    text-align: center;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  </style>
 
 <style scoped>
 .search-section {

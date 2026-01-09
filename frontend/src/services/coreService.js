@@ -1,5 +1,6 @@
 const searchItems = (params = {}) => {
     const searchParams = new URLSearchParams()
+    const token = localStorage.getItem('session_token')
     
     // Add query parameter if provided
     if (params.q) {
@@ -24,7 +25,19 @@ const searchItems = (params = {}) => {
         ? `http://localhost:3333/search?${searchParams.toString()}`
         : "http://localhost:3333/search"
     
-    return fetch(url)
+    // Create headers object - add auth if we have a token
+    const headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    if (token) {
+        headers['X-Authorization'] = token
+    }
+    
+    return fetch(url, {
+        method: 'GET',
+        headers: headers
+    })
     .then((response) => {
         if(response.status === 200){
             return response.json()
@@ -111,7 +124,7 @@ const placeBid = (itemId, bidData) => {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
+            ...(token && { 'X-Authorization': token })
         },
         body: JSON.stringify(bidData)
     })

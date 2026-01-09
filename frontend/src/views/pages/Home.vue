@@ -8,7 +8,7 @@
             Find a range of luxury and unique pieces from trust sellers ready for purchase today
           </p>
           <div class="d-flex justify-content-center align-items-center gap-4 mb-4 flex-wrap">
-            <router-link to="/search">
+            <router-link to="/items">
               <Button text="Browse Pieces" />
             </router-link>
             <router-link v-if="isLoggedIn" to="/item">

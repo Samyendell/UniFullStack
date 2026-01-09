@@ -12,7 +12,6 @@
           <nav class="d-flex justify-content-center gap-3">
             <router-link to="/" class="nav-link">Home</router-link>
             <router-link to="/items" class="nav-link">Browse</router-link>
-            <router-link to="/search" class="nav-link">Search</router-link>
             <router-link v-if="isLoggedIn" to="/create-item" class="nav-link">List</router-link>
           </nav>
         </div>
@@ -40,7 +39,6 @@
       <div v-show="showMobile" class="mobile-menu d-lg-none">
         <router-link to="/" class="mobile-link" @click="showMobile = false">Home</router-link>
         <router-link to="/items" class="mobile-link" @click="showMobile = false">Browse</router-link>
-        <router-link to="/search" class="mobile-link" @click="showMobile = false">Search</router-link>
         <router-link v-if="isLoggedIn" to="/create-item" class="mobile-link" @click="showMobile = false">List</router-link>
         <hr>
         <template v-if="isLoggedIn">

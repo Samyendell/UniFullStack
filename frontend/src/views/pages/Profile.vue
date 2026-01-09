@@ -1,454 +1,344 @@
 <template>
-    <div class="profile">
-      <div class="profile-container">
-        <div class="profile-header">
+  <div class="items-page">
+    <div class="items-container">
+      <h1 class="page-title">{{ user ? `${user.first_name} ${user.last_name}'s Profile` : 'Profile' }}</h1>
+
+      <div v-if="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading profile...</p>
+      </div>
+
+      <div v-else-if="error" class="error">
+        <p>{{ error }}</p>
+      </div>
+
+      <div v-else-if="user" class="profile-container">
+        <!-- Profile Header -->
+        <div class="profile-info-section">
           <div class="avatar">
-            <img :src="user.avatar || '/default-avatar.jpg'" :alt="user.name" />
+            <div class="avatar-placeholder">
+              {{ user.first_name && user.last_name ? user.first_name.charAt(0) + user.last_name.charAt(0) : 'U' }}
+            </div>
           </div>
-          <h1>{{ user.name || 'User Profile' }}</h1>
-          <p>{{ user.email }}</p>
+          <div class="user-details">
+            <p class="user-id">User ID: {{ user.user_id }}</p>
+          </div>
         </div>
-  
-        <div class="profile-tabs">
-          <button 
-            @click="activeTab = 'info'"
-            :class="{ active: activeTab === 'info' }"
-            class="tab-btn"
-          >
-            Personal Info
-          </button>
-          <button 
-            @click="activeTab = 'items'"
-            :class="{ active: activeTab === 'items' }"
-            class="tab-btn"
-          >
-            My Items
-          </button>
-          <button 
-            @click="activeTab = 'settings'"
-            :class="{ active: activeTab === 'settings' }"
-            class="tab-btn"
-          >
-            Settings
-          </button>
+
+        <!-- Profile Tabs using Button component -->
+        <div class="filters-section">
+          <Button 
+            :text="`Selling (${user.selling?.length || 0})`"
+            @click="activeTab = 'selling'"
+            :class="{ 'tab-active': activeTab === 'selling' }"
+            class="tab-button"
+          />
+          <Button 
+            :text="`Bidding On (${user.bidding_on?.length || 0})`"
+            @click="activeTab = 'bidding'"
+            :class="{ 'tab-active': activeTab === 'bidding' }"
+            class="tab-button"
+          />
+          <Button 
+            :text="`Ended Auctions (${user.auctions_ended?.length || 0})`"
+            @click="activeTab = 'ended'"
+            :class="{ 'tab-active': activeTab === 'ended' }"
+            class="tab-button"
+          />
         </div>
-  
-        <div class="profile-content">
-          <!-- Personal Info Tab -->
-          <div v-show="activeTab === 'info'" class="tab-content">
-            <form @submit.prevent="updateProfile" class="profile-form">
-              <div class="form-group">
-                <label for="name">Full Name</label>
-                <input 
-                  type="text" 
-                  id="name"
-                  v-model="userForm.name" 
-                  required
-                />
-              </div>
-  
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input 
-                  type="email" 
-                  id="email"
-                  v-model="userForm.email" 
-                  required
-                />
-              </div>
-  
-              <div class="form-group">
-                <label for="phone">Phone</label>
-                <input 
-                  type="tel" 
-                  id="phone"
-                  v-model="userForm.phone"
-                />
-              </div>
-  
-              <div class="form-group">
-                <label for="location">Location</label>
-                <input 
-                  type="text" 
-                  id="location"
-                  v-model="userForm.location"
-                  placeholder="City, Country"
-                />
-              </div>
-  
-              <div class="form-group">
-                <label for="bio">Bio</label>
-                <textarea 
-                  id="bio"
-                  v-model="userForm.bio" 
-                  rows="4"
-                  placeholder="Tell us about yourself..."
-                ></textarea>
-              </div>
-  
-              <div class="form-actions">
-                <button type="submit" :disabled="loading" class="btn btn-primary">
-                  {{ loading ? 'Updating...' : 'Update Profile' }}
-                </button>
-              </div>
-            </form>
+
+        <!-- Tab Content -->
+        <!-- Selling Tab -->
+        <div v-if="activeTab === 'selling'">
+          <div v-if="!user.selling || user.selling.length === 0" class="no-items">
+            <p>No items currently for sale</p>
           </div>
-  
-          <!-- My Items Tab -->
-          <div v-show="activeTab === 'items'" class="tab-content">
-            <div class="items-stats">
-              <div class="stat-card">
-                <h3>{{ userItems.length }}</h3>
-                <p>Total Items</p>
-              </div>
-              <div class="stat-card">
-                <h3>{{ availableItems }}</h3>
-                <p>Available</p>
-              </div>
-              <div class="stat-card">
-                <h3>{{ soldItems }}</h3>
-                <p>Sold</p>
-              </div>
-            </div>
-  
-            <div v-if="userItems.length === 0" class="no-items">
-              <p>You haven't created any items yet</p>
-              <router-link to="/create-item" class="btn btn-primary">
-                Create Your First Item
-              </router-link>
-            </div>
-  
-            <div v-else class="items-list">
-              <div 
-                v-for="item in userItems" 
-                :key="item.id"
-                class="item-row"
-                @click="viewItem(item.id)"
-              >
-                <img :src="item.image || '/placeholder-watch.jpg'" :alt="item.name" />
-                <div class="item-info">
-                  <h4>{{ item.name }}</h4>
-                  <p>{{ item.brand }} {{ item.model }}</p>
-                  <span class="status" :class="item.status">{{ item.status }}</span>
-                </div>
-                <div class="item-price">
-                  ${{ item.price }}
-                </div>
-              </div>
-            </div>
+          
+          <div v-else class="items-grid">
+            <ItemCard 
+              v-for="item in user.selling" 
+              :key="item.item_id"
+              :item="item"
+              @click="viewItem(item.item_id)" 
+            />
           </div>
-  
-          <!-- Settings Tab -->
-          <div v-show="activeTab === 'settings'" class="tab-content">
-            <div class="settings-section">
-              <h3>Account Settings</h3>
-              
-              <div class="setting-item">
-                <label>
-                  <input type="checkbox" v-model="settings.emailNotifications" />
-                  Receive email notifications
-                </label>
-              </div>
-  
-              <div class="setting-item">
-                <label>
-                  <input type="checkbox" v-model="settings.publicProfile" />
-                  Make profile public
-                </label>
-              </div>
-  
-              <div class="setting-item">
-                <label>
-                  <input type="checkbox" v-model="settings.showLocation" />
-                  Show location to other users
-                </label>
-              </div>
-  
-              <button @click="updateSettings" class="btn btn-primary">
-                Save Settings
-              </button>
-            </div>
-  
-            <div class="danger-zone">
-              <h3>Danger Zone</h3>
-              <button @click="deleteAccount" class="btn btn-danger">
-                Delete Account
-              </button>
-            </div>
+        </div>
+
+        <!-- Bidding On Tab -->
+        <div v-if="activeTab === 'bidding'">
+          <div v-if="!user.bidding_on || user.bidding_on.length === 0" class="no-items">
+            <p>Not currently bidding on any items</p>
+          </div>
+          
+          <div v-else class="items-grid">
+            <ItemCard 
+              v-for="item in user.bidding_on" 
+              :key="item.item_id"
+              :item="item"
+              @click="viewItem(item.item_id)" 
+            />
+          </div>
+        </div>
+
+        <!-- Ended Auctions Tab -->
+        <div v-if="activeTab === 'ended'">
+          <div v-if="!user.auctions_ended || user.auctions_ended.length === 0" class="no-items">
+            <p>No ended auctions</p>
+          </div>
+          
+          <div v-else class="items-grid">
+            <ItemCard 
+              v-for="item in user.auctions_ended" 
+              :key="item.item_id"
+              :item="item"
+              @click="viewItem(item.item_id)" 
+            />
           </div>
         </div>
       </div>
+
+      <div v-else class="not-found">
+        <h1 class="page-title">User Not Found</h1>
+        <p>The user you're looking for doesn't exist or has been removed.</p>
+        <Button text="Browse Items" @click="$router.push('/items')" />
+      </div>
     </div>
-  </template>
-  
-  <script>
-  import { coreService } from '../../services/coreService'
-  
-  export default {
-    name: 'Profile',
-    data() {
-      return {
-        user: {},
-        userForm: {},
-        userItems: [],
-        settings: {
-          emailNotifications: true,
-          publicProfile: false,
-          showLocation: false
-        },
-        activeTab: 'info',
-        loading: false,
-        error: null
+  </div>
+</template>
+
+<script>
+import { userService } from '../../services/userService'
+import ItemCard from '../../views/components/molecules/ItemCard.vue'
+import Button from '../components/atoms/Button.vue'
+
+export default {
+  name: 'Profile',
+  components: {
+    ItemCard,
+    Button
+  },
+  data() {
+    return {
+      user: null,
+      loading: true,
+      error: null,
+      activeTab: 'selling'
+    }
+  },
+  computed: {
+    userId() {
+      return this.$route.params.id || localStorage.getItem('user_id')
+    }
+  },
+  async created() {
+    await this.loadProfile()
+  },
+  methods: {
+    async loadProfile() {
+      this.loading = true
+      this.error = null
+
+      try {
+        console.log('Loading profile for user ID:', this.userId)
+        this.user = await userService.getUserProfile(this.userId)
+        console.log('Loaded user profile:', this.user)
+      } catch (error) {
+        console.error('Error loading profile:', error)
+        this.error = error || 'Failed to load profile'
+      } finally {
+        this.loading = false
       }
     },
-    computed: {
-      availableItems() {
-        return this.userItems.filter(item => item.status === 'available').length
-      },
-      soldItems() {
-        return this.userItems.filter(item => item.status === 'sold').length
-      }
-    },
-    created() {
-      this.loadProfile()
-    },
-    methods: {
-      async loadProfile() {
-        try {
-          this.user = await coreService.getUserProfile()
-          this.userForm = { ...this.user }
-          this.userItems = await coreService.getUserItems()
-        } catch (error) {
-          this.error = error.message
-        }
-      },
-      async updateProfile() {
-        this.loading = true
-        try {
-          await coreService.updateProfile(this.userForm)
-          this.user = { ...this.userForm }
-        } catch (error) {
-          this.error = error.message
-        } finally {
-          this.loading = false
-        }
-      },
-      async updateSettings() {
-        try {
-          await coreService.updateSettings(this.settings)
-        } catch (error) {
-          this.error = error.message
-        }
-      },
-      viewItem(id) {
-        this.$router.push(`/items/${id}`)
-      },
-      async deleteAccount() {
-        if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-          try {
-            await coreService.deleteAccount()
-            this.$router.push('/logout')
-          } catch (error) {
-            this.error = error.message
-          }
-        }
-      }
+
+    viewItem(itemId) {
+      console.log('Navigating to item ID:', itemId)
+      this.$router.push(`/items/${itemId}`)
     }
   }
-  </script>
-  
-  <style scoped>
-  .profile {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
+}
+</script>
+
+<style scoped>
+/* Use the exact same pattern as ItemsView.vue */
+.items-page {
+  padding: 2rem 0;
+}
+
+.items-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.page-title {
+  text-align: center;
+  margin-bottom: 3rem;
+  color: #2c3e50;
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+
+.profile-info-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #d4af37, #f4d03f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  border: 4px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.user-id {
+  color: #6c757d;
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+.filters-section {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+
+/* Style the Button components as tabs */
+.tab-button {
+  min-width: 180px !important;
+  background: white !important;
+  color: #6c757d !important;
+  border: 1px solid #ced4da !important;
+  font-weight: 600 !important;
+}
+
+.tab-button:hover {
+  border-color: #d4af37 !important;
+  color: #2c3e50 !important;
+  background: #f8f9fa !important;
+}
+
+.tab-button.tab-active {
+  background: #d4af37 !important;
+  color: white !important;
+  border-color: #d4af37 !important;
+}
+
+.tab-button:focus {
+  outline: none !important;
+  border-color: #d4af37 !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2) !important;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #d4af37;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.no-items {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6c757d;
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.not-found {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 2rem;
   }
-  
-  .profile-container {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-    overflow: hidden;
+
+  .items-container {
+    padding: 0 1rem;
   }
-  
-  .profile-header {
-    background: linear-gradient(45deg, #f4d03f, #f7dc6f);
-    padding: 2rem;
-    text-align: center;
-    color: #1a1a2e;
+
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
   }
-  
-  .avatar img {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    border: 4px solid white;
-    margin-bottom: 1rem;
+
+  .filters-section {
+    flex-direction: column;
+    align-items: center;
   }
-  
-  .profile-tabs {
-    display: flex;
-    border-bottom: 1px solid #e9ecef;
+
+  .tab-button {
+    min-width: 250px !important;
   }
-  
-  .tab-btn {
-    flex: 1;
-    padding: 1rem;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
-  }
-  
-  .tab-btn.active {
-    background: #f4d03f;
-    color: #1a1a2e;
-  }
-  
-  .profile-content {
-    padding: 2rem;
-  }
-  
-  .profile-form {
-    max-width: 500px;
-  }
-  
-  .form-group {
-    margin-bottom: 1.5rem;
-  }
-  
-  label {
-    display: block;
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
-  }
-  
-  input, textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e1e8ed;
-    border-radius: 8px;
-    font-size: 1rem;
-    box-sizing: border-box;
-  }
-  
-  .items-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+
+  .profile-info-section {
+    flex-direction: column;
     gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-title {
+    font-size: 1.5rem;
     margin-bottom: 2rem;
   }
-  
-  .stat-card {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 12px;
-    text-align: center;
-  }
-  
-  .stat-card h3 {
-    font-size: 2rem;
-    color: #f4d03f;
-    margin-bottom: 0.5rem;
-  }
-  
-  .items-list {
-    space-y: 1rem;
-  }
-  
-  .item-row {
-    display: flex;
-    align-items: center;
+
+  .items-grid {
+    grid-template-columns: 1fr;
     gap: 1rem;
-    padding: 1rem;
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
   }
-  
-  .item-row:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+
+  .tab-button {
+    min-width: 100% !important;
   }
-  
-  .item-row img {
+
+  .avatar-placeholder {
     width: 60px;
     height: 60px;
-    object-fit: cover;
-    border-radius: 8px;
+    font-size: 1.2rem;
   }
-  
-  .item-info {
-    flex: 1;
-  }
-  
-  .status {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-  
-  .status.available {
-    background: #d4edda;
-    color: #155724;
-  }
-  
-  .status.sold {
-    background: #f8d7da;
-    color: #721c24;
-  }
-  
-  .settings-section {
-    margin-bottom: 3rem;
-  }
-  
-  .setting-item {
-    margin-bottom: 1rem;
-  }
-  
-  .danger-zone {
-    border-top: 2px solid #dc3545;
-    padding-top: 2rem;
-  }
-  
-  .btn {
-    padding: 0.75rem 2rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-  }
-  
-  .btn-primary {
-    background: linear-gradient(45deg, #f4d03f, #f7dc6f);
-    color: #1a1a2e;
-  }
-  
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-  }
-  
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  }
-  
-  @media (max-width: 768px) {
-    .profile {
-      padding: 1rem;
-    }
-    
-    .items-stats {
-      grid-template-columns: 1fr;
-    }
-  }
-  </style>
+}
+</style>

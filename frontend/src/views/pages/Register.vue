@@ -62,7 +62,6 @@ export default {
 
             try {
                 await userService.register(firstName, lastName, email, password)
-                alert('Welcome to TickTokTwo! Please sign in with your new account.')
                 this.$router.push('/login')
             } catch (error) {
                 this.error = error || 'Signup failed. Please try again.'

@@ -1,621 +1,919 @@
 <template>
-    <div class="single-item">
+  <div class="items-page">
+    <div class="items-container">
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
         <p>Loading item details...</p>
       </div>
-  
+
       <div v-else-if="error" class="error">
         <p>{{ error }}</p>
-        <button @click="loadItem" class="btn btn-retry">Try Again</button>
       </div>
-  
+
       <div v-else-if="item" class="item-container">
+        <!-- Back Button -->
+        <div class="back-section">
+          <Button text="Back to Items" @click="goBack" />
+        </div>
+
         <!-- Item Header -->
         <div class="item-header">
-          <h1>{{ item.title }}</h1>
-          <div class="item-meta">
-            <span class="category">{{ item.category }}</span>
-            <span class="seller">Sold by: {{ item.seller_name || 'Anonymous' }}</span>
-          </div>
+          <h1 class="page-title">{{ item.name }}</h1>
         </div>
-  
+
         <!-- Main Content Grid -->
         <div class="item-content">
           <!-- Image Section -->
-          <div class="item-image">
-            <img :src="getImageUrl(item.image)" :alt="item.title" />
+          <div class="item-image custom-card">
+            <img :src="getImageUrl(item.image)" :alt="item.name" />
           </div>
-  
+
           <!-- Item Details -->
           <div class="item-details">
-            <div class="price-section">
+            <div class="price-section custom-card">
               <div class="current-bid">
                 <span class="label">Current Bid:</span>
-                <span class="amount">{{ formatPrice(item.highest_bid || item.reserve) }}</span>
+                <span class="amount">£{{ item.current_bid || item.starting_bid }}</span>
               </div>
-              <div class="reserve-price" v-if="item.reserve">
-                <span class="label">Reserve Price:</span>
-                <span class="amount">{{ formatPrice(item.reserve) }}</span>
+              <div class="starting-price">
+                <span class="label">Starting Price:</span>
+                <span class="amount">£{{ item.starting_bid }}</span>
+              </div>
+              <div class="seller-info">
+                <span class="label">Listed by:</span>
+                <span class="seller-name">{{ item.first_name + ' ' + item.last_name }}</span>
               </div>
             </div>
-  
+
             <!-- Auction Status -->
-            <div class="auction-status">
+            <div class="auction-status custom-card">
+              <div class="time-started">
+                <span class="label">Started:</span>
+                <span class="time">{{ formatStartDate(item.start_date) }}</span>
+              </div>
               <div class="time-remaining">
-                <span class="label">Time Remaining:</span>
-                <span class="time">{{ getTimeRemaining(item.bidding_close) }}</span>
+                <span class="label">Ends:</span>
+                <span class="time">{{ formatEndDate(item.end_date) }}</span>
               </div>
               <div class="total-bids">
                 <span class="label">Total Bids:</span>
                 <span class="count">{{ bidHistory.length }}</span>
               </div>
             </div>
-  
+
             <!-- Bidding Section -->
-            <div class="bidding-section" v-if="isAuctionActive && isLoggedIn && !isOwnItem">
+            <div class="bidding-section custom-card" v-if="isAuctionActive && isLoggedIn && !isOwnItem">
               <h3>Place Your Bid</h3>
               <div class="bid-form">
                 <input 
                   type="number" 
                   v-model="newBid" 
-                  :min="minimumBid"
-                  :step="0.01"
+                  :min="minimumBid" 
                   placeholder="Enter your bid amount"
-                  class="bid-input"
+                  class="form-input"
+                  :class="{ 'input-error': bidError }"
                 />
-                <button @click="placeBid" :disabled="bidLoading" class="btn btn-primary">
-                  {{ bidLoading ? 'Placing Bid...' : 'Place Bid' }}
-                </button>
+                <Button 
+                  :text="bidLoading ? 'Placing Bid...' : 'Place Bid'" 
+                  @click="placeBid" 
+                  :disabled="bidLoading"
+                  class="small-btn"
+                />
               </div>
-              <p class="min-bid-note">Minimum bid: {{ formatPrice(minimumBid) }}</p>
+              <p class="min-bid-note">Minimum bid: £{{ minimumBid }}</p>
+              <div v-if="bidError" class="error-message">{{ bidError }}</div>
             </div>
-  
-            <!-- Not Logged In Message -->
-            <div v-else-if="isAuctionActive && !isLoggedIn" class="login-prompt">
-              <p>Please <router-link to="/login">log in</router-link> to place a bid</p>
+
+            <!-- Status Messages -->
+            <div v-else-if="isAuctionActive && !isLoggedIn" class="status-message custom-card">
+              <p>Please <router-link to="/login" class="login-link">log in</router-link> to place a bid</p>
             </div>
-  
-            <!-- Own Item Message -->
-            <div v-else-if="isOwnItem" class="own-item">
+
+            <div v-else-if="isOwnItem" class="status-message custom-card">
               <p>This is your item - you cannot bid on it</p>
             </div>
-  
-            <!-- Auction Closed -->
-            <div v-else class="auction-closed">
+
+            <div v-else class="status-message custom-card">
               <p>This auction has ended</p>
             </div>
           </div>
         </div>
-  
+
         <!-- Description -->
-        <div class="item-description">
+        <div class="item-description custom-card">
           <h3>Description</h3>
           <p>{{ item.description || 'No description provided' }}</p>
         </div>
-  
+
         <!-- Bid History -->
-        <div class="bid-history">
+        <div class="bid-history custom-card">
           <h3>Bid History</h3>
           <div v-if="bidHistory.length === 0" class="no-bids">
             <p>No bids yet. Be the first!</p>
           </div>
           <div v-else class="bid-list">
-            <div 
-              v-for="bid in bidHistory" 
-              :key="bid.id"
-              class="bid-item"
-            >
-              <span class="bid-amount">{{ formatPrice(bid.amount) }}</span>
+            <div v-for="bid in bidHistory" :key="bid.id" class="bid-item">
+              <span class="bid-amount">£{{ bid.amount }}</span>
               <span class="bid-time">{{ formatDateTime(bid.timestamp) }}</span>
-              <span class="bidder">{{ bid.bidder_name || 'Anonymous' }}</span>
+              <span class="bidder">{{ bid.first_name + ' ' + bid.last_name }}</span>
             </div>
           </div>
         </div>
-  
+
         <!-- Questions Section -->
-        <div class="questions-section">
+        <div class="questions-section custom-card">
           <h3>Questions & Answers</h3>
-          
-          <!-- Ask Question Form -->
-          <div class="ask-question" v-if="isLoggedIn && !isOwnItem">
+
+          <!-- Ask Question Form (only if logged in and not own item) -->
+          <div v-if="isLoggedIn && !isOwnItem" class="ask-question-form">
             <h4>Ask a Question</h4>
             <div class="question-form">
               <textarea 
                 v-model="newQuestion" 
-                placeholder="Type your question here..."
+                placeholder="Ask the seller a question about this item..."
+                class="form-input question-textarea" 
                 rows="3"
-                class="question-input"
+                :class="{ 'input-error': questionError }"
               ></textarea>
-              <button @click="askQuestion" :disabled="questionLoading" class="btn btn-primary">
-                {{ questionLoading ? 'Submitting...' : 'Ask Question' }}
-              </button>
+              <Button 
+                :text="questionLoading ? 'Asking...' : 'Ask Question'" 
+                @click="askQuestion"
+                :disabled="questionLoading"
+                class="small-btn" 
+              />
             </div>
+            <div v-if="questionError" class="error-message">{{ questionError }}</div>
           </div>
-  
-          <!-- Questions List -->
-          <div class="questions-list">
-            <div v-if="questions.length === 0" class="no-questions">
-              <p>No questions yet</p>
-            </div>
-            <div v-else>
-              <div 
-                v-for="question in questions" 
-                :key="question.id"
-                class="question-item"
-              >
-                <div class="question">
-                  <p><strong>Q:</strong> {{ question.question }}</p>
-                  <small>Asked {{ formatDateTime(question.timestamp) }}</small>
+
+          <div v-if="questions.length === 0" class="no-questions">
+            <p>No questions yet. Be the first to ask!</p>
+          </div>
+          <div v-else class="questions-list">
+            <div v-for="question in questions" :key="question.question_id" class="question-item">
+              <!-- Question -->
+              <div class="question">
+                <p class="question-text">{{ question.question_text }}</p>
+                <div class="question-meta">
+                  <span class="questioner">Customer</span>
                 </div>
-                
-                <!-- Answer -->
-                <div v-if="question.answer" class="answer">
-                  <p><strong>A:</strong> {{ question.answer }}</p>
+              </div>
+
+              <!-- Answer -->
+              <div v-if="question.answer_text" class="answer">
+                <p class="answer-text">{{ question.answer_text }}</p>
+                <div class="answer-meta">
+                  <span class="answerer">Seller</span>
                 </div>
-  
-                <!-- Answer Form (for seller) -->
-                <div v-else-if="isOwnItem" class="answer-form">
-                  <textarea 
-                    v-model="answerText[question.id]" 
-                    placeholder="Type your answer..."
-                    rows="2"
-                    class="answer-input"
-                  ></textarea>
-                  <button @click="answerQuestion(question.id)" class="btn btn-small">
-                    Answer
-                  </button>
-                </div>
-  
-                <div v-else class="no-answer">
-                  <em>No answer yet</em>
-                </div>
+              </div>
+
+              <!-- Answer Form (only for item owner) -->
+              <div v-else-if="isOwnItem" class="answer-form">
+                <textarea 
+                  v-model="answerTexts[question.question_id]" 
+                  placeholder="Answer this question..."
+                  class="form-input answer-textarea" 
+                  rows="2"
+                  :class="{ 'input-error': answerErrors[question.question_id] }"
+                ></textarea>
+                <Button 
+                  :text="answerLoading[question.question_id] ? 'Answering...' : 'Answer'"
+                  @click="answerQuestion(question.question_id)"
+                  :disabled="answerLoading[question.question_id]"
+                  class="small-btn" 
+                />
+                <div v-if="answerErrors[question.question_id]" class="error-message">{{ answerErrors[question.question_id] }}</div>
+              </div>
+
+              <!-- No Answer Yet -->
+              <div v-else class="no-answer">
+                <p>Waiting for seller to respond...</p>
               </div>
             </div>
           </div>
         </div>
-  
+
       </div>
-  
+
       <div v-else class="not-found">
-        <h1>Item Not Found</h1>
+        <h1 class="page-title">Item Not Found</h1>
         <p>The item you're looking for doesn't exist or has been removed.</p>
-        <router-link to="/search" class="btn btn-primary">Browse Items</router-link>
+        <Button text="Browse Items" @click="$router.push('/items')" />
       </div>
     </div>
-  </template>
-  
-  <script>
-  import { coreService } from '../../services/coreService'
-  import { questionService } from '../../services/questionService'
-  import { formatPrice, formatDateTime, getTimeRemaining } from '../../utils/utils'
-  
-  export default {
-    name: 'SingleItem',
-    data() {
-      return {
-        item: null,
-        bidHistory: [],
-        questions: [],
-        loading: true,
-        error: null,
-        newBid: '',
-        newQuestion: '',
-        answerText: {},
-        bidLoading: false,
-        questionLoading: false
+  </div>
+</template>
+
+<script>
+import { coreService } from '../../services/coreService'
+import { questionService } from '../../services/questionService'
+import Button from '../components/atoms/Button.vue'
+
+export default {
+  name: 'SingleItem',
+  components: {
+    Button
+  },
+  data() {
+    return {
+      item: null,
+      bidHistory: [],
+      questions: [],
+      loading: true,
+      error: null,
+      newBid: '',
+      bidLoading: false,
+      bidError: '',
+      newQuestion: '',
+      questionLoading: false,
+      questionError: '',
+      answerTexts: {},
+      answerLoading: {},
+      answerErrors: {}
+    }
+  },
+  computed: {
+    itemId() {
+      return this.$route.params.id
+    },
+    isLoggedIn() {
+      return !!localStorage.getItem('session_token')
+    },
+    currentUserId() {
+      return localStorage.getItem('user_id')
+    },
+    isOwnItem() {
+      return this.item && this.currentUserId && this.item.creator_id === parseInt(this.currentUserId)
+    },
+    isAuctionActive() {
+      if (!this.item || !this.item.end_date) return false
+      const endTime = this.item.end_date
+      return Date.now() < endTime
+    },
+    minimumBid() {
+      if (!this.item) return 0
+      const currentHighest = this.item.current_bid || this.item.starting_bid || 0
+      return currentHighest + 1
+    }
+  },
+  async created() {
+    await this.loadItem()
+    await this.loadBidHistory()
+    await this.loadQuestions()
+  },
+  methods: {
+    async loadItem() {
+      this.loading = true
+      this.error = null
+
+      try {
+        console.log('Loading item with ID:', this.itemId)
+        this.item = await coreService.getSingleItem(this.itemId)
+        console.log('Loaded item:', this.item)
+      } catch (error) {
+        console.error('Error loading item:', error)
+        this.error = error || 'Failed to load item'
+      } finally {
+        this.loading = false
       }
     },
-    computed: {
-      itemId() {
-        return this.$route.params.id
-      },
-      isLoggedIn() {
-        return !!localStorage.getItem('session_token')
-      },
-      currentUserId() {
-        return localStorage.getItem('user_id')
-      },
-      isOwnItem() {
-        return this.item && this.currentUserId && this.item.seller_id === parseInt(this.currentUserId)
-      },
-      isAuctionActive() {
-        return this.item && new Date(this.item.bidding_close) > new Date()
-      },
-      minimumBid() {
-        if (!this.item) return 0
-        const currentHighest = this.item.highest_bid || this.item.reserve || 0
-        return currentHighest + 1 // Minimum increment of £1
+
+    async loadBidHistory() {
+      try {
+        this.bidHistory = await coreService.getBidHistory(this.itemId)
+      } catch (error) {
+        console.error('Failed to load bid history:', error)
+        this.bidHistory = []
       }
     },
-    async created() {
-      await this.loadItem()
-      await this.loadBidHistory()
-      await this.loadQuestions()
-    },
-    methods: {
-      async loadItem() {
-        this.loading = true
-        this.error = null
-  
-        try {
-          this.item = await coreService.getSingleItem(this.itemId)
-        } catch (error) {
-          this.error = error || 'Failed to load item'
-        } finally {
-          this.loading = false
-        }
-      },
-  
-      async loadBidHistory() {
-        try {
-          this.bidHistory = await coreService.getBidHistory(this.itemId)
-        } catch (error) {
-          console.error('Failed to load bid history:', error)
-          this.bidHistory = []
-        }
-      },
-  
-      async loadQuestions() {
-        try {
-          this.questions = await questionService.getQuestions(this.itemId)
-        } catch (error) {
-          console.error('Failed to load questions:', error)
-          this.questions = []
-        }
-      },
-  
-      async placeBid() {
-        if (!this.newBid || this.newBid < this.minimumBid) {
-          alert(`Minimum bid is ${this.formatPrice(this.minimumBid)}`)
-          return
-        }
-  
-        this.bidLoading = true
-  
-        try {
-          await coreService.placeBid(this.itemId, { amount: parseFloat(this.newBid) })
-          
-          // Reload data
-          await this.loadItem()
-          await this.loadBidHistory()
-          
-          this.newBid = ''
-          alert('Bid placed successfully!')
-        } catch (error) {
-          alert(error || 'Failed to place bid')
-        } finally {
-          this.bidLoading = false
-        }
-      },
-  
-      async askQuestion() {
-        if (!this.newQuestion.trim()) {
-          alert('Please enter a question')
-          return
-        }
-  
-        this.questionLoading = true
-  
-        try {
-          await questionService.askQuestion(this.itemId, { question: this.newQuestion })
-          
-          await this.loadQuestions()
-          this.newQuestion = ''
-          alert('Question submitted successfully!')
-        } catch (error) {
-          alert(error || 'Failed to submit question')
-        } finally {
-          this.questionLoading = false
-        }
-      },
-  
-      async answerQuestion(questionId) {
-        const answer = this.answerText[questionId]
-        if (!answer?.trim()) {
-          alert('Please enter an answer')
-          return
-        }
-  
-        try {
-          await questionService.answerQuestion(questionId, { answer })
-          
-          await this.loadQuestions()
-          this.$delete(this.answerText, questionId)
-          alert('Answer submitted successfully!')
-        } catch (error) {
-          alert(error || 'Failed to submit answer')
-        }
-      },
-  
-      formatPrice,
-      formatDateTime,
-      getTimeRemaining,
-  
-      getImageUrl(imagePath) {
-        if (!imagePath) return '/placeholder-watch.jpg'
-        if (imagePath.startsWith('http')) return imagePath
-        return `${process.env.VUE_APP_BASE_URL || ''}${imagePath}`
+
+    async loadQuestions() {
+      try {
+        this.questions = await questionService.getQuestions(this.itemId)
+      } catch (error) {
+        console.error('Failed to load questions:', error)
+        this.questions = []
       }
+    },
+
+    async placeBid() {
+      // Clear previous error
+      this.bidError = ''
+
+      // Validation
+      if (!this.newBid || this.newBid === '') {
+        this.bidError = 'Please enter a bid amount'
+        return
+      }
+
+      const bidAmount = parseFloat(this.newBid)
+      if (isNaN(bidAmount) || bidAmount <= 0) {
+        this.bidError = 'Please enter a valid bid amount'
+        return
+      }
+
+      if (bidAmount < this.minimumBid) {
+        this.bidError = `Minimum bid is £${this.minimumBid}`
+        return
+      }
+
+      this.bidLoading = true
+
+      try {
+        await coreService.placeBid(this.itemId, { amount: bidAmount })
+
+        // Reload data
+        await this.loadItem()
+        await this.loadBidHistory()
+
+        this.newBid = ''
+        this.bidError = ''
+      } catch (error) {
+        console.error('Failed to place bid:', error)
+        this.bidError = error || 'Failed to place bid'
+      } finally {
+        this.bidLoading = false
+      }
+    },
+
+    async askQuestion() {
+      // Clear previous error
+      this.questionError = ''
+
+      // Validation
+      if (!this.newQuestion || !this.newQuestion.trim()) {
+        this.questionError = 'Please enter a question'
+        return
+      }
+
+      if (this.newQuestion.trim().length < 5) {
+        this.questionError = 'Question must be at least 5 characters long'
+        return
+      }
+
+      this.questionLoading = true
+
+      try {
+        await questionService.askQuestion(this.itemId, { question_text: this.newQuestion.trim() })
+
+        await this.loadQuestions()
+
+        this.newQuestion = ''
+        this.questionError = ''
+      } catch (error) {
+        console.error('Failed to ask question:', error)
+        this.questionError = error || 'Failed to ask question'
+      } finally {
+        this.questionLoading = false
+      }
+    },
+
+    async answerQuestion(questionId) {
+      // Clear previous error - using reactive assignment instead of Vue.set
+      this.answerErrors = { ...this.answerErrors, [questionId]: '' }
+
+      const answerText = this.answerTexts[questionId]
+
+      // Validation
+      if (!answerText || !answerText.trim()) {
+        this.answerErrors = { ...this.answerErrors, [questionId]: 'Please enter an answer' }
+        return
+      }
+
+      if (answerText.trim().length < 3) {
+        this.answerErrors = { ...this.answerErrors, [questionId]: 'Answer must be at least 3 characters long' }
+        return
+      }
+
+      this.answerLoading = { ...this.answerLoading, [questionId]: true }
+
+      try {
+        await questionService.answerQuestion(questionId, { answer_text: answerText.trim() })
+
+        await this.loadQuestions()
+
+        this.answerTexts = { ...this.answerTexts, [questionId]: '' }
+        this.answerErrors = { ...this.answerErrors, [questionId]: '' }
+      } catch (error) {
+        console.error('Failed to answer question:', error)
+        this.answerErrors = { ...this.answerErrors, [questionId]: error || 'Failed to answer question' }
+      } finally {
+        this.answerLoading = { ...this.answerLoading, [questionId]: false }
+      }
+    },
+
+    goBack() {
+      this.$router.push('/items')
+    },
+
+    getImageUrl(imagePath) {
+      if (!imagePath) return '/placeholder-watch.jpg'
+      if (imagePath.startsWith('http')) return imagePath
+      return `${process.env.VUE_APP_BASE_URL || ''}${imagePath}`
+    },
+
+    formatStartDate(timestamp) {
+      if (!timestamp) return 'Unknown start date'
+      const date = new Date(timestamp)
+      
+      // Force UK date format: DD/MM/YYYY at HH:MM
+      const ukDateOptions = {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        timeZone: 'Europe/London'
+      }
+      
+      const ukTimeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false, // 24-hour format
+        timeZone: 'Europe/London'
+      }
+      
+      const ukDate = date.toLocaleDateString('en-GB', ukDateOptions)
+      const ukTime = date.toLocaleTimeString('en-GB', ukTimeOptions)
+      
+      return `${ukDate} at ${ukTime}`
+    },
+
+    formatEndDate(timestamp) {
+      if (!timestamp) return 'No end date'
+      const date = new Date(timestamp)
+      
+      // Force UK date format: DD/MM/YYYY at HH:MM
+      const ukDateOptions = {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        timeZone: 'Europe/London'
+      }
+      
+      const ukTimeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false, // 24-hour format
+        timeZone: 'Europe/London'
+      }
+      
+      const ukDate = date.toLocaleDateString('en-GB', ukDateOptions)
+      const ukTime = date.toLocaleTimeString('en-GB', ukTimeOptions)
+      
+      return `${ukDate} at ${ukTime}`
+    },
+
+    formatDateTime(timestamp) {
+      if (!timestamp) return 'Unknown'
+      const date = new Date(timestamp)
+      
+      // Force UK date/time format: DD/MM/YYYY, HH:MM
+      const ukOptions = {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false, // 24-hour format
+        timeZone: 'Europe/London'
+      }
+      
+      return date.toLocaleString('en-GB', ukOptions)
     }
   }
-  </script>
-  
-  <style scoped>
-  .single-item {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
+}
+</script>
+
+<style scoped>
+/* Add these new error styles */
+.small-btn {
+  padding: 0.6rem 1.2rem !important;
+  font-size: 0.875rem !important;
+  height: auto !important;
+  min-height: auto !important;
+  white-space: nowrap;
+  align-self: flex-end;
+  max-width: 120px;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+.answer-form .small-btn {
+  align-self: flex-start;
+  max-width: 100px;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
+}
+
+/* All your existing styles stay the same */
+.back-section {
+  margin-bottom: 2rem;
+}
+
+.item-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.item-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.item-image {
+  padding: 1rem;
+}
+
+.item-image img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.price-section,
+.auction-status,
+.bidding-section,
+.status-message,
+.questions-section {
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.current-bid,
+.starting-price,
+.seller-info,
+.time-started,
+.time-remaining,
+.total-bids {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.current-bid:last-child,
+.starting-price:last-child,
+.seller-info:last-child,
+.time-started:last-child,
+.time-remaining:last-child,
+.total-bids:last-child {
+  margin-bottom: 0;
+}
+
+.current-bid {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.amount {
+  color: #d4af37;
+  font-weight: 700;
+}
+
+.seller-name {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.bid-form,
+.question-form {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+  align-items: flex-end;
+}
+
+.bid-form input {
+  flex: 1;
+}
+
+.question-textarea {
+  flex: 1;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.min-bid-note {
+  font-size: 0.875rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.status-message {
+  text-align: center;
+  color: #6c757d;
+}
+
+.login-link {
+  color: #d4af37;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}
+
+.item-description,
+.bid-history,
+.questions-section {
+  background: white;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.item-description h3,
+.bid-history h3,
+.questions-section h3 {
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.ask-question-form {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.ask-question-form h4 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.no-bids,
+.no-questions {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.bid-list,
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bid-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.question-item {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  background: #fff;
+}
+
+.question {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.question-text {
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.question-meta,
+.answer-meta {
+  font-size: 0.875rem;
+  color: #6c757d;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.questioner,
+.answerer {
+  font-weight: 600;
+}
+
+.answer {
+  padding: 1.5rem;
+  background: #fff;
+}
+
+.answer-text {
+  margin: 0 0 0.75rem 0;
+  color: #495057;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.answer-form {
+  padding: 1.5rem;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.answer-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 60px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.answer-textarea:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.no-answer {
+  padding: 1.5rem;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  background: #f8f9fa;
+}
+
+.bid-amount {
+  font-weight: 700;
+  color: #28a745;
+  font-size: 1.1rem;
+}
+
+.bid-time {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.bidder {
+  font-weight: 600;
+  color: #495057;
+}
+
+.not-found {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #d4af37;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
   }
-  
-  .loading {
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.form-input {
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+@media (max-width: 768px) {
+  .item-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .bid-form,
+  .question-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .small-btn {
+    align-self: stretch !important;
     text-align: center;
-    padding: 4rem 2rem;
+    max-width: none !important;
   }
-  
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #f4d03f;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 1rem;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  .error {
+
+  .bid-item {
+    grid-template-columns: 1fr;
     text-align: center;
-    padding: 2rem;
-    colour: #d63384;
+    gap: 0.5rem;
   }
-  
+
+  .question-meta,
+  .answer-meta {
+    flex-direction: column;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+
+  .price-section,
+  .auction-status,
+  .bidding-section,
+  .status-message,
+  .questions-section,
+  .item-description,
+  .bid-history {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
   .item-header {
     margin-bottom: 2rem;
   }
-  
-  .item-header h1 {
-    font-size: 2.5rem;
-    colour: #2c3e50;
-    margin-bottom: 1rem;
-  }
-  
-  .item-meta {
-    display: flex;
-    gap: 2rem;
-    colour: #6c757d;
-  }
-  
-  .category {
-    background: #f8f9fa;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
-  }
-  
-  .item-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-    margin-bottom: 3rem;
-  }
-  
-  .item-image img {
-    width: 100%;
-    height: auto;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  }
-  
-  .item-details {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-  }
-  
-  .price-section {
-    background: linear-gradient(45deg, #f4d03f, #f7dc6f);
-    padding: 2rem;
-    border-radius: 12px;
-    colour: #1a1a2e;
-  }
-  
-  .current-bid, .reserve-price {
-    display: flex;
-    justify-content: space-between;
-    align-items: centre;
-  }
-  
-  .current-bid {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 1rem;
-  }
-  
-  .auction-status {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 12px;
-  }
-  
-  .time-remaining, .total-bids {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-  
-  .bidding-section {
-    background: white;
-    border: 2px solid #f4d03f;
-    padding: 2rem;
-    border-radius: 12px;
-  }
-  
-  .bid-form {
-    display: flex;
-    gap: 1rem;
-    margin: 1rem 0;
-  }
-  
-  .bid-input {
-    flex: 1;
-    padding: 0.75rem;
-    border: 2px solid #e1e8ed;
-    border-radius: 8px;
-    font-size: 1rem;
-  }
-  
-  .min-bid-note {
-    font-size: 0.875rem;
-    colour: #6c757d;
-    margin: 0;
-  }
-  
-  .login-prompt, .own-item, .auction-closed {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 12px;
-    text-align: centre;
-    colour: #6c757d;
-  }
-  
-  .item-description, .bid-history, .questions-section {
-    margin-bottom: 3rem;
-  }
-  
-  .item-description h3, .bid-history h3, .questions-section h3 {
-    colour: #2c3e50;
-    margin-bottom: 1rem;
+
+  .page-title {
     font-size: 1.5rem;
   }
-  
-  .no-bids, .no-questions {
-    text-align: centre;
-    padding: 2rem;
-    colour: #6c757d;
+
+  .price-section,
+  .auction-status,
+  .bidding-section,
+  .status-message,
+  .questions-section,
+  .item-description,
+  .bid-history {
+    padding: 1rem;
   }
-  
-  .bid-list {
-    display: flex;
+
+  .current-bid,
+  .starting-price,
+  .seller-info,
+  .time-started,
+  .time-remaining,
+  .total-bids {
     flex-direction: column;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
-  
-  .bid-item {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 1rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-  }
-  
-  .bid-amount {
-    font-weight: 700;
-    colour: #28a745;
-  }
-  
-  .questions-list {
-    margin-top: 2rem;
-  }
-  
-  .question-item {
-    border: 1px solid #e1e8ed;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1rem;
-    background: white;
-  }
-  
-  .question {
-    margin-bottom: 1rem;
-  }
-  
-  .answer {
-    background: #f8f9fa;
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #f4d03f;
-  }
-  
-  .question-form, .answer-form {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-  
-  .question-input, .answer-input {
-    flex: 1;
-    padding: 0.75rem;
-    border: 2px solid #e1e8ed;
-    border-radius: 8px;
-    font-family: inherit;
-    resize: vertical;
-  }
-  
-  .btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-  }
-  
-  .btn-primary {
-    background: linear-gradient(45deg, #f4d03f, #f7dc6f);
-    colour: #1a1a2e;
-  }
-  
-  .btn-small {
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-  }
-  
-  .btn:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-  }
-  
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-  
-  .not-found {
-    text-align: centre;
-    padding: 4rem 2rem;
-  }
-  
-  @media (max-width: 768px) {
-    .single-item {
-      padding: 1rem;
-    }
-    
-    .item-content {
-      grid-template-columns: 1fr;
-      gap: 2rem;
-    }
-    
-    .item-meta {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .bid-form, .question-form, .answer-form {
-      flex-direction: column;
-    }
-    
-    .bid-item {
-      grid-template-columns: 1fr;
-      text-align: centre;
-    }
-  }
-  </style>
+}
+</style>

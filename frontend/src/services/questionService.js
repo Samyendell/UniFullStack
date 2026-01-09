@@ -1,10 +1,23 @@
 const getQuestions = (itemId) => {
-    return fetch(`http://localhost:3333/item/${itemId}/question`)
+    const token = localStorage.getItem('session_token')
+    
+    const headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    if (token) {
+        headers['X-Authorization'] = token
+    }
+    
+    return fetch(`http://localhost:3333/item/${itemId}/question`, {
+        method: 'GET',
+        headers: headers
+    })
     .then((response) => {
         if(response.status === 200){
             return response.json()
         } else {
-            throw 'something went wrong'
+            throw 'Failed to load questions'
         }
     })
     .then((resJson) => {
@@ -19,11 +32,15 @@ const getQuestions = (itemId) => {
 const askQuestion = (itemId, questionData) => {
     const token = localStorage.getItem('session_token')
     
+    if (!token) {
+        return Promise.reject('Authentication required')
+    }
+    
     return fetch(`http://localhost:3333/item/${itemId}/question`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
+            'X-Authorization': token
         },
         body: JSON.stringify(questionData)
     })
@@ -31,7 +48,7 @@ const askQuestion = (itemId, questionData) => {
         if(response.status === 200){
             return response.json()
         } else {
-            throw 'something went wrong'
+            throw 'Failed to ask question'
         }
     })
     .then((resJson) => {
@@ -46,11 +63,15 @@ const askQuestion = (itemId, questionData) => {
 const answerQuestion = (questionId, answerData) => {
     const token = localStorage.getItem('session_token')
     
+    if (!token) {
+        return Promise.reject('Authentication required')
+    }
+    
     return fetch(`http://localhost:3333/question/${questionId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
+            'X-Authorization': token
         },
         body: JSON.stringify(answerData)
     })
@@ -58,7 +79,7 @@ const answerQuestion = (questionId, answerData) => {
         if(response.status === 200){
             return response.json()
         } else {
-            throw 'something went wrong'
+            throw 'Failed to answer question'
         }
     })
     .then((resJson) => {

@@ -1,18 +1,14 @@
 const searchItems = (params = {}) => {
     const searchParams = new URLSearchParams()
-    const token = localStorage.getItem('session_token')
     
-    // Add query parameter if provided
     if (params.q) {
         searchParams.append('q', params.q)
     }
     
-    // Add status filter if provided
     if (params.status) {
         searchParams.append('status', params.status)
     }
     
-    // Add pagination if provided
     if (params.limit) {
         searchParams.append('limit', params.limit)
     }
@@ -25,28 +21,23 @@ const searchItems = (params = {}) => {
         ? `http://localhost:3333/search?${searchParams.toString()}`
         : "http://localhost:3333/search"
     
-    // Create headers object - add auth if we have a token
-    const headers = {
-        'Content-Type': 'application/json'
-    }
-    
-    if (token) {
-        headers['X-Authorization'] = token
-    }
-    
     return fetch(url, {
         method: 'GET',
-        headers: headers
-    })
-    .then((response) => {
-        if(response.status === 200){
-            return response.json()
-        } else {
-            throw 'something went wrong'
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Authorization': localStorage.getItem('session_token')
         }
     })
-    .then((resJson) => {
-        return resJson
+    .then((response) => {
+        if (response.status === 200) {
+            return response.json()
+        } else if (response.status === 400 || response.status === 401 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
+        } else {
+            throw 'Search failed'
+        }
     })
     .catch((err) => {
         console.log("Err", err)
@@ -57,14 +48,15 @@ const searchItems = (params = {}) => {
 const getAllItems = () => {
     return fetch("http://localhost:3333/search")
     .then((response) => {
-        if(response.status === 200){
+        if (response.status === 200) {
             return response.json()
+        } else if (response.status === 400 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
         } else {
-            throw 'something went wrong'
+            throw 'Failed to load items'
         }
-    })
-    .then((resJson) => {
-        return resJson
     })
     .catch((err) => {
         console.log("Err", err)
@@ -75,14 +67,15 @@ const getAllItems = () => {
 const getSingleItem = (id) => {
     return fetch(`http://localhost:3333/item/${id}`)
     .then((response) => {
-        if(response.status === 200){
+        if (response.status === 200) {
             return response.json()
+        } else if (response.status === 400 || response.status === 404 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
         } else {
-            throw 'something went wrong'
+            throw 'Failed to load item'
         }
-    })
-    .then((resJson) => {
-        return resJson
     })
     .catch((err) => {
         console.log("Err", err)
@@ -91,25 +84,24 @@ const getSingleItem = (id) => {
 }
 
 const createItem = (itemData) => {
-    const token = localStorage.getItem('session_token')
-    
     return fetch("http://localhost:3333/item", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'X-Authorization': token })
+            'X-Authorization': localStorage.getItem('session_token')
         },
         body: JSON.stringify(itemData)
     })
     .then((response) => {
-        if(response.status === 201){
+        if (response.status === 201) {
             return response.json()
+        } else if (response.status === 400 || response.status === 401 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
         } else {
-            throw 'something went wrong'
+            throw 'Failed to create item'
         }
-    })
-    .then((resJson) => {
-        return resJson
     })
     .catch((err) => {
         console.log("Err", err)
@@ -118,25 +110,24 @@ const createItem = (itemData) => {
 }
 
 const placeBid = (itemId, bidData) => {
-    const token = localStorage.getItem('session_token')
-    
     return fetch(`http://localhost:3333/item/${itemId}/bid`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            ...(token && { 'X-Authorization': token })
+            'X-Authorization': localStorage.getItem('session_token')
         },
         body: JSON.stringify(bidData)
     })
     .then((response) => {
-        if(response.status === 201){
+        if (response.status === 201) {
             return response.json()
+        } else if (response.status === 400 || response.status === 401 || response.status === 403 || response.status === 404 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
         } else {
-            throw 'something went wrong'
+            throw 'Failed to place bid'
         }
-    })
-    .then((resJson) => {
-        return resJson
     })
     .catch((err) => {
         console.log("Err", err)
@@ -147,14 +138,15 @@ const placeBid = (itemId, bidData) => {
 const getBidHistory = (itemId) => {
     return fetch(`http://localhost:3333/item/${itemId}/bid`)
     .then((response) => {
-        if(response.status === 200){
+        if (response.status === 200) {
             return response.json()
+        } else if (response.status === 400 || response.status === 404 || response.status === 500) {
+            return response.json().then(data => {
+                throw data.error_message
+            })
         } else {
-            throw 'something went wrong'
+            throw 'Failed to load bid history'
         }
-    })
-    .then((resJson) => {
-        return resJson
     })
     .catch((err) => {
         console.log("Err", err)

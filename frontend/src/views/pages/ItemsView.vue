@@ -30,7 +30,6 @@
 
       <div v-else-if="items.length === 0" class="no-items">
         <p>{{ getNoItemsMessage() }}</p>
-        <Button v-if="!hasSearchOrFilter" text="Create First Item" @click="createItem" class="w-full" />
       </div>
 
       <div v-else class="items-grid">

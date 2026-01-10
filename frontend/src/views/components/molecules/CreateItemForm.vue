@@ -35,9 +35,10 @@
           v-model="formData.end_date"
           type="datetime-local"
           class="form-input"
-          :class="{ error: submitted && !formData.end_date }"
+          :class="{ error: submitted && endDateError }"
+          :min="minDateTime"
         />
-        <div v-if="submitted && !formData.end_date" class="error-text">End date is required</div>
+        <div v-if="submitted && endDateError" class="error-text">{{ endDateError }}</div>
       </div>
 
       <div v-if="error" class="form-error">{{ error }}</div>
@@ -80,11 +81,16 @@ export default {
       }
     }
   },
+  computed: {
+    minDateTime() {
+      return new Date().toISOString().slice(0, 16)
+    },
+  },
   methods: {
     handleSubmit() {
       this.submitted = true
       
-      if (!(this.formData.name && this.formData.starting_bid && this.formData.end_date)) {
+      if (!(this.formData.name && this.formData.starting_bid && this.formData.end_date) || this.endDateError) {
         return
       }
 
@@ -128,4 +134,4 @@ export default {
   .form-input.error {
     border-color: #ff0000;
   }
-  </style>
+</style>

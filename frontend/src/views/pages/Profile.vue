@@ -1,7 +1,10 @@
 <template>
   <div class="items-page">
     <div class="items-container">
-      <h1 class="page-title">{{ user ? `${user.first_name} ${user.last_name}'s Profile` : 'Profile' }}</h1>
+      <div class="profile-header">
+        <h1 class="page-title">{{ user ? `${user.first_name} ${user.last_name}` : 'Profile' }}</h1>
+        <p v-if="user" class="user-subtitle">User ID: {{ user.user_id }}</p>
+      </div>
 
       <div v-if="loading" class="loading">
         <div class="spinner"></div>
@@ -13,37 +16,22 @@
       </div>
 
       <div v-else-if="user" class="profile-container">
-        <!-- Profile Header -->
-        <div class="profile-info-section">
-          <div class="avatar">
-            <div class="avatar-placeholder">
-              {{ user.first_name && user.last_name ? user.first_name.charAt(0) + user.last_name.charAt(0) : 'U' }}
-            </div>
-          </div>
-          <div class="user-details">
-            <p class="user-id">User ID: {{ user.user_id }}</p>
-          </div>
-        </div>
-
         <!-- Profile Tabs using Button component -->
         <div class="filters-section">
           <Button 
-            :text="`Selling (${user.selling?.length || 0})`"
+            text="Selling"
             @click="activeTab = 'selling'"
             :class="{ 'tab-active': activeTab === 'selling' }"
-            class="tab-button"
           />
           <Button 
-            :text="`Bidding On (${user.bidding_on?.length || 0})`"
+            text="Bidding On"
             @click="activeTab = 'bidding'"
             :class="{ 'tab-active': activeTab === 'bidding' }"
-            class="tab-button"
           />
           <Button 
-            :text="`Ended Auctions (${user.auctions_ended?.length || 0})`"
+            text="Ended Auctions"
             @click="activeTab = 'ended'"
             :class="{ 'tab-active': activeTab === 'ended' }"
-            class="tab-button"
           />
         </div>
 
@@ -80,15 +68,14 @@
           </div>
         </div>
 
-        <!-- Ended Auctions Tab -->
         <div v-if="activeTab === 'ended'">
-          <div v-if="!user.auctions_ended || user.auctions_ended.length === 0" class="no-items">
+          <div v-if="!endedAuctions || endedAuctions.length === 0" class="no-items">
             <p>No ended auctions</p>
           </div>
           
           <div v-else class="items-grid">
             <ItemCard 
-              v-for="item in user.auctions_ended" 
+              v-for="item in endedAuctions" 
               :key="item.item_id"
               :item="item"
               @click="viewItem(item.item_id)" 
@@ -107,59 +94,79 @@
 </template>
 
 <script>
-import { userService } from '../../services/userService'
-import ItemCard from '../../views/components/molecules/ItemCard.vue'
-import Button from '../components/atoms/Button.vue'
-
-export default {
-  name: 'Profile',
-  components: {
-    ItemCard,
-    Button
-  },
-  data() {
-    return {
-      user: null,
-      loading: true,
-      error: null,
-      activeTab: 'selling'
-    }
-  },
-  computed: {
-    userId() {
-      return this.$route.params.id || localStorage.getItem('user_id')
-    }
-  },
-  async created() {
-    await this.loadProfile()
-  },
-  methods: {
-    async loadProfile() {
-      this.loading = true
-      this.error = null
-
-      try {
-        console.log('Loading profile for user ID:', this.userId)
-        this.user = await userService.getUserProfile(this.userId)
-        console.log('Loaded user profile:', this.user)
-      } catch (error) {
-        console.error('Error loading profile:', error)
-        this.error = error || 'Failed to load profile'
-      } finally {
-        this.loading = false
+  import { userService } from '../../services/userService'
+  import ItemCard from '../../views/components/molecules/ItemCard.vue'
+  import Button from '../components/atoms/Button.vue'
+  
+  export default {
+    name: 'Profile',
+    components: {
+      ItemCard,
+      Button
+    },
+    data() {
+      return {
+        user: null,
+        loading: true,
+        error: null,
+        activeTab: 'selling'
       }
     },
-
-    viewItem(itemId) {
-      console.log('Navigating to item ID:', itemId)
-      this.$router.push(`/items/${itemId}`)
+    computed: {
+      userId() {
+        return this.$route.params.id || localStorage.getItem('user_id')
+      },
+      endedAuctions() {
+        if (!this.user) return []
+        
+        // Check multiple possible property names for ended auctions
+        return this.user.auctions_ended || 
+               this.user.ended_auctions || 
+               this.user.ended || 
+               []
+      }
+    },
+    async created() {
+      await this.loadProfile()
+    },
+    methods: {
+      async loadProfile() {
+        this.loading = true
+        this.error = null
+  
+        try {
+          console.log('Loading profile for user ID:', this.userId)
+          this.user = await userService.getUserProfile(this.userId)
+          console.log('Loaded user profile:', this.user)
+          
+          // Debug log to see what properties are available
+          console.log('User properties:', Object.keys(this.user))
+          console.log('Selling items:', this.user.selling?.length || 0)
+          console.log('Bidding on items:', this.user.bidding_on?.length || 0)
+          console.log('Ended auctions:', this.endedAuctions?.length || 0)
+          console.log('All ended auction properties:', {
+            auctions_ended: this.user.auctions_ended,
+            ended_auctions: this.user.ended_auctions,
+            ended: this.user.ended
+          })
+          
+        } catch (error) {
+          console.error('Error loading profile:', error)
+          this.error = error || 'Failed to load profile'
+        } finally {
+          this.loading = false
+        }
+      },
+  
+      viewItem(itemId) {
+        console.log('Navigating to item ID:', itemId)
+        this.$router.push(`/items/${itemId}`)
+      }
     }
   }
-}
-</script>
+  </script>
 
 <style scoped>
-/* Use the exact same pattern as ItemsView.vue */
 .items-page {
   padding: 2rem 0;
 }
@@ -170,42 +177,23 @@ export default {
   padding: 0 2rem;
 }
 
-.page-title {
+.profile-header {
   text-align: center;
   margin-bottom: 3rem;
-  color: #2c3e50;
+}
+
+.page-title {
+  color: #ffffff;
   font-size: 2.5rem;
   font-weight: 700;
+  margin-bottom: 0.5rem;
 }
 
-.profile-info-section {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 2rem;
-  margin-bottom: 2rem;
-}
-
-.avatar-placeholder {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(45deg, #d4af37, #f4d03f);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-  border: 4px solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.user-id {
+.user-subtitle {
   color: #6c757d;
   font-size: 1.1rem;
-  margin: 0;
   font-weight: 500;
+  margin: 0;
 }
 
 .filters-section {
@@ -216,31 +204,17 @@ export default {
   flex-wrap: wrap;
 }
 
-/* Style the Button components as tabs */
-.tab-button {
-  min-width: 180px !important;
-  background: white !important;
-  color: #6c757d !important;
-  border: 1px solid #ced4da !important;
-  font-weight: 600 !important;
-}
-
-.tab-button:hover {
-  border-color: #d4af37 !important;
-  color: #2c3e50 !important;
-  background: #f8f9fa !important;
-}
-
-.tab-button.tab-active {
+/* Active state styling for Button components */
+.filters-section .tab-active {
   background: #d4af37 !important;
-  color: white !important;
   border-color: #d4af37 !important;
+  color: #ffffff !important;
 }
 
-.tab-button:focus {
-  outline: none !important;
-  border-color: #d4af37 !important;
-  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2) !important;
+.filters-section .tab-active:hover {
+  background: #c19b26 !important;
+  border-color: #c19b26 !important;
+  color: #ffffff !important;
 }
 
 .items-grid {
@@ -296,6 +270,10 @@ export default {
     font-size: 2rem;
   }
 
+  .user-subtitle {
+    font-size: 1rem;
+  }
+
   .items-container {
     padding: 0 1rem;
   }
@@ -309,15 +287,6 @@ export default {
     flex-direction: column;
     align-items: center;
   }
-
-  .tab-button {
-    min-width: 250px !important;
-  }
-
-  .profile-info-section {
-    flex-direction: column;
-    gap: 1rem;
-  }
 }
 
 @media (max-width: 480px) {
@@ -326,19 +295,13 @@ export default {
     margin-bottom: 2rem;
   }
 
+  .user-subtitle {
+    font-size: 0.95rem;
+  }
+
   .items-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
-  }
-
-  .tab-button {
-    min-width: 100% !important;
-  }
-
-  .avatar-placeholder {
-    width: 60px;
-    height: 60px;
-    font-size: 1.2rem;
   }
 }
 </style>

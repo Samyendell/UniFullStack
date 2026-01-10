@@ -65,20 +65,9 @@
             <div class="bidding-section custom-card" v-if="isAuctionActive && isLoggedIn && !isOwnItem">
               <h3>Place Your Bid</h3>
               <div class="bid-form">
-                <input 
-                  type="number" 
-                  v-model="newBid" 
-                  :min="minimumBid" 
-                  placeholder="Enter your bid amount"
-                  class="form-input"
-                  :class="{ 'input-error': bidError }"
-                />
-                <Button 
-                  :text="bidLoading ? 'Placing Bid...' : 'Place Bid'" 
-                  @click="placeBid" 
-                  :disabled="bidLoading"
-                  class="small-btn"
-                />
+                <input type="number" v-model="newBid" :min="minimumBid" placeholder="Enter your bid amount"
+                  class="form-input" :class="{ 'input-error': bidError }" />
+                <Button :text="bidLoading ? 'Placing Bid...' : 'Place Bid'" @click="placeBid" :disabled="bidLoading" />
               </div>
               <p class="min-bid-note">Minimum bid: £{{ minimumBid }}</p>
               <div v-if="bidError" class="error-message">{{ bidError }}</div>
@@ -128,19 +117,10 @@
           <div v-if="isLoggedIn && !isOwnItem" class="ask-question-form">
             <h4>Ask a Question</h4>
             <div class="question-form">
-              <textarea 
-                v-model="newQuestion" 
-                placeholder="Ask the seller a question about this item..."
-                class="form-input question-textarea" 
-                rows="3"
-                :class="{ 'input-error': questionError }"
-              ></textarea>
-              <Button 
-                :text="questionLoading ? 'Asking...' : 'Ask Question'" 
-                @click="askQuestion"
-                :disabled="questionLoading"
-                class="small-btn" 
-              />
+              <textarea v-model="newQuestion" placeholder="Ask the seller a question about this item..."
+                class="form-input question-textarea" rows="3" :class="{ 'input-error': questionError }"></textarea>
+              <Button :text="questionLoading ? 'Asking...' : 'Ask Question'" @click="askQuestion"
+                :disabled="questionLoading" />
             </div>
             <div v-if="questionError" class="error-message">{{ questionError }}</div>
           </div>
@@ -168,20 +148,13 @@
 
               <!-- Answer Form (only for item owner) -->
               <div v-else-if="isOwnItem" class="answer-form">
-                <textarea 
-                  v-model="answerTexts[question.question_id]" 
-                  placeholder="Answer this question..."
-                  class="form-input answer-textarea" 
-                  rows="2"
-                  :class="{ 'input-error': answerErrors[question.question_id] }"
-                ></textarea>
-                <Button 
-                  :text="answerLoading[question.question_id] ? 'Answering...' : 'Answer'"
-                  @click="answerQuestion(question.question_id)"
-                  :disabled="answerLoading[question.question_id]"
-                  class="small-btn" 
-                />
-                <div v-if="answerErrors[question.question_id]" class="error-message">{{ answerErrors[question.question_id] }}</div>
+                <textarea v-model="answerTexts[question.question_id]" placeholder="Answer this question..."
+                  class="form-input answer-textarea" rows="2"
+                  :class="{ 'input-error': answerErrors[question.question_id] }"></textarea>
+                <Button :text="answerLoading[question.question_id] ? 'Answering...' : 'Answer'"
+                  @click="answerQuestion(question.question_id)" :disabled="answerLoading[question.question_id]" />
+                <div v-if="answerErrors[question.question_id]" class="error-message">{{
+                  answerErrors[question.question_id] }}</div>
               </div>
 
               <!-- No Answer Yet -->
@@ -296,10 +269,8 @@ export default {
     },
 
     async placeBid() {
-      // Clear previous error
       this.bidError = ''
 
-      // Validation
       if (!this.newBid || this.newBid === '') {
         this.bidError = 'Please enter a bid amount'
         return
@@ -319,14 +290,29 @@ export default {
       this.bidLoading = true
 
       try {
-        await coreService.placeBid(this.itemId, { amount: bidAmount })
+        const bidResponse = await coreService.placeBid(this.itemId, { amount: bidAmount })
 
-        // Reload data
-        await this.loadItem()
-        await this.loadBidHistory()
+        // Update item data locally instead of reloading
+        this.item.current_bid = bidAmount
 
+        // Add new bid to history locally
+        const currentUserId = parseInt(this.currentUserId)
+        const newBid = {
+          id: Date.now(), // temporary ID
+          amount: bidAmount,
+          timestamp: Date.now(),
+          first_name: 'You', // or get from user data
+          last_name: '',
+          user_id: currentUserId
+        }
+
+        // Add to beginning of bid history (most recent first)
+        this.bidHistory.unshift(newBid)
+
+        // Clear form
         this.newBid = ''
         this.bidError = ''
+
       } catch (error) {
         console.error('Failed to place bid:', error)
         this.bidError = error || 'Failed to place bid'
@@ -336,10 +322,8 @@ export default {
     },
 
     async askQuestion() {
-      // Clear previous error
       this.questionError = ''
 
-      // Validation
       if (!this.newQuestion || !this.newQuestion.trim()) {
         this.questionError = 'Please enter a question'
         return
@@ -354,9 +338,7 @@ export default {
 
       try {
         await questionService.askQuestion(this.itemId, { question_text: this.newQuestion.trim() })
-
         await this.loadQuestions()
-
         this.newQuestion = ''
         this.questionError = ''
       } catch (error) {
@@ -368,12 +350,9 @@ export default {
     },
 
     async answerQuestion(questionId) {
-      // Clear previous error - using reactive assignment instead of Vue.set
       this.answerErrors = { ...this.answerErrors, [questionId]: '' }
-
       const answerText = this.answerTexts[questionId]
 
-      // Validation
       if (!answerText || !answerText.trim()) {
         this.answerErrors = { ...this.answerErrors, [questionId]: 'Please enter an answer' }
         return
@@ -388,9 +367,7 @@ export default {
 
       try {
         await questionService.answerQuestion(questionId, { answer_text: answerText.trim() })
-
         await this.loadQuestions()
-
         this.answerTexts = { ...this.answerTexts, [questionId]: '' }
         this.answerErrors = { ...this.answerErrors, [questionId]: '' }
       } catch (error) {
@@ -414,68 +391,65 @@ export default {
     formatStartDate(timestamp) {
       if (!timestamp) return 'Unknown start date'
       const date = new Date(timestamp)
-      
-      // Force UK date format: DD/MM/YYYY at HH:MM
+
       const ukDateOptions = {
         day: '2-digit',
-        month: '2-digit', 
+        month: '2-digit',
         year: 'numeric',
         timeZone: 'Europe/London'
       }
-      
+
       const ukTimeOptions = {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false, // 24-hour format
+        hour12: false,
         timeZone: 'Europe/London'
       }
-      
+
       const ukDate = date.toLocaleDateString('en-GB', ukDateOptions)
       const ukTime = date.toLocaleTimeString('en-GB', ukTimeOptions)
-      
+
       return `${ukDate} at ${ukTime}`
     },
 
     formatEndDate(timestamp) {
       if (!timestamp) return 'No end date'
       const date = new Date(timestamp)
-      
-      // Force UK date format: DD/MM/YYYY at HH:MM
+
       const ukDateOptions = {
         day: '2-digit',
-        month: '2-digit', 
+        month: '2-digit',
         year: 'numeric',
         timeZone: 'Europe/London'
       }
-      
+
       const ukTimeOptions = {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false, // 24-hour format
+        hour12: false,
         timeZone: 'Europe/London'
       }
-      
+
       const ukDate = date.toLocaleDateString('en-GB', ukDateOptions)
       const ukTime = date.toLocaleTimeString('en-GB', ukTimeOptions)
-      
+
       return `${ukDate} at ${ukTime}`
     },
 
     formatDateTime(timestamp) {
       if (!timestamp) return 'Unknown'
       const date = new Date(timestamp)
-      
-      // Force UK date/time format: DD/MM/YYYY, HH:MM
+
       const ukOptions = {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false, // 24-hour format
+        hour12: false,
         timeZone: 'Europe/London'
       }
-      
+
       return date.toLocaleString('en-GB', ukOptions)
     }
   }
@@ -483,22 +457,39 @@ export default {
 </script>
 
 <style scoped>
-/* Add these new error styles */
-.small-btn {
-  padding: 0.6rem 1.2rem !important;
-  font-size: 0.875rem !important;
-  height: auto !important;
-  min-height: auto !important;
-  white-space: nowrap;
-  align-self: flex-end;
-  max-width: 120px;
-  pointer-events: auto !important;
-  cursor: pointer !important;
+.bid-form,
+.question-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
 }
 
-.answer-form .small-btn {
-  align-self: flex-start;
-  max-width: 100px;
+.answer-form {
+  padding: 1.5rem;
+  background: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.question-textarea,
+.answer-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.question-textarea:focus,
+.answer-textarea:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
 .error-message {
@@ -516,7 +507,6 @@ export default {
   box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
 }
 
-/* All your existing styles stay the same */
 .back-section {
   margin-bottom: 2rem;
 }
@@ -595,24 +585,6 @@ export default {
 .seller-name {
   color: #2c3e50;
   font-weight: 600;
-}
-
-.bid-form,
-.question-form {
-  display: flex;
-  gap: 1rem;
-  margin: 1rem 0;
-  align-items: flex-end;
-}
-
-.bid-form input {
-  flex: 1;
-}
-
-.question-textarea {
-  flex: 1;
-  resize: vertical;
-  min-height: 80px;
 }
 
 .min-bid-note {
@@ -741,31 +713,6 @@ export default {
   line-height: 1.5;
 }
 
-.answer-form {
-  padding: 1.5rem;
-  background: #f8f9fa;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.answer-textarea {
-  width: 100%;
-  resize: vertical;
-  min-height: 60px;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
-  padding: 0.75rem;
-  font-family: inherit;
-  font-size: 0.9rem;
-}
-
-.answer-textarea:focus {
-  outline: none;
-  border-color: #d4af37;
-  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
-}
-
 .no-answer {
   padding: 1.5rem;
   text-align: center;
@@ -848,18 +795,6 @@ export default {
   .item-content {
     grid-template-columns: 1fr;
     gap: 2rem;
-  }
-
-  .bid-form,
-  .question-form {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .small-btn {
-    align-self: stretch !important;
-    text-align: center;
-    max-width: none !important;
   }
 
   .bid-item {

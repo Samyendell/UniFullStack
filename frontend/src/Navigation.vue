@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
     <nav class="navigation">
       <router-link to="/" class="nav-link">Home</router-link>
       <router-link to="/items" class="nav-link">Browse Items</router-link>
@@ -49,4 +49,4 @@
       gap: 0.5rem;
     }
   }
-  </style>
+  </style> -->

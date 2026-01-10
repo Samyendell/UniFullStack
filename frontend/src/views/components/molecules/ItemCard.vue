@@ -26,12 +26,30 @@ export default {
   emits: ['click'],
   methods: {
     getStatusClass() {
+      if (!this.item || !this.item.end_date) return 'active'
+      
       const now = Date.now()
-      return now > this.item.end_date * 1000 ? 'ended' : 'active'
+      const endTime = this.item.end_date
+      
+      console.log('ItemCard Status Check:', {
+        itemName: this.item.name,
+        now: now,
+        endTime: endTime,
+        nowFormatted: new Date(now).toLocaleString(),
+        endTimeFormatted: new Date(endTime).toLocaleString(),
+        isActive: now < endTime
+      })
+      
+      return now < endTime ? 'active' : 'ended'
     },
+    
     getStatusText() {
+      if (!this.item || !this.item.end_date) return 'Active'
+      
       const now = Date.now()
-      return now > this.item.end_date * 1000 ? 'Ended' : 'Active'
+      const endTime = this.item.end_date
+      
+      return now < endTime ? 'Active' : 'Ended'
     }
   }
 }
